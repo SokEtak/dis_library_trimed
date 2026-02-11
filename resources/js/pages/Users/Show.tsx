@@ -147,7 +147,7 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.email}:</strong>
                                     <span className="text-gray-800 dark:text-gray-100 text-base font-medium">{user.email || "N/A"}</span>
                                 </p>
-                                <p className="flex items-center space-x-3">
+                                {/* <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.campus}:</strong>
                                     {user.campus ? (
                                         <Link
@@ -159,7 +159,7 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                     ) : (
                                         <span className="text-red-400 dark:text-red-300 text-base font-medium">{t.none}</span>
                                     )}
-                                </p>
+                                </p> */}
                                 <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.roles}:</strong>
                                     <span className="flex flex-wrap gap-2">
@@ -177,7 +177,7 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                         )}
                                     </span>
                                 </p>
-                                <p className="flex items-center space-x-3">
+                                {/* <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.permissions}:</strong>
                                     <span className="flex flex-wrap gap-2">
                                         {user.permissions?.length > 0 ? (
@@ -193,7 +193,7 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                             <span className="text-red-400 dark:text-red-300 text-base font-medium">{t.none}</span>
                                         )}
                                     </span>
-                                </p>
+                                </p> */}
                                 <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.isVerified}:</strong>
                                     {user.isVerified ? (
@@ -202,14 +202,14 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                         <CircleX className="h-5 w-5 text-red-600 dark:text-red-400" />
                                     )}
                                 </p>
-                                <p className="flex items-center space-x-3">
+                                {/* <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.isActive}:</strong>
                                     {user.isActive ? (
                                         <CircleCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                                     ) : (
                                         <CircleX className="h-5 w-5 text-red-600 dark:text-red-400" />
                                     )}
-                                </p>
+                                </p> */}
                                 <p className="flex items-center space-x-3">
                                     <strong className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.createdAt}:</strong>
                                     <span className="text-gray-800 dark:text-gray-100 text-base font-medium">
@@ -236,12 +236,49 @@ export default function UsersShow({ user, flash, isSuperLibrarian = false, lang 
                                     {user.name ? user.name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2) : 'N/A'}
                                 </div>
                             )}
-                            <Button
-                                className={`${commonStyles.button} ${commonStyles.indigoButton} mt-6 w-full py-2.5 text-base`}
-                                onClick={() => setShowLargeAvatar(false)}
-                            >
-                                Close
-                            </Button>
+                            {showLargeAvatar && (
+                                <div
+                                    className={commonStyles.modal}
+                                    onClick={() => setShowLargeAvatar(false)}
+                                >
+                                    <div
+                                        className={`${commonStyles.modalContent} relative`}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {/* ❌ Close button (top-right) */}
+                                        <button
+                                            onClick={() => setShowLargeAvatar(false)}
+                                            className="absolute top-3 right-3 rounded-full p-2
+                           text-gray-500 hover:text-gray-800
+                           dark:text-gray-400 dark:hover:text-white
+                           hover:bg-gray-200 dark:hover:bg-gray-700
+                           transition"
+                                            aria-label="Close"
+                                        >
+                                            ✕
+                                        </button>
+
+                                        {user.avatar ? (
+                                            <img
+                                                src={user.avatar}
+                                                alt={`${user.name}'s large avatar`}
+                                                className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-lg"
+                                            />
+                                        ) : (
+                                            <div className="h-64 w-64 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-500 dark:text-indigo-400 text-4xl font-semibold shadow-lg">
+                                                {user.name
+                                                    ? user.name
+                                                        .split(' ')
+                                                        .map(word => word.charAt(0).toUpperCase())
+                                                        .join('')
+                                                        .slice(0, 2)
+                                                    : 'N/A'}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 )}

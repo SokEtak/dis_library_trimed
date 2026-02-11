@@ -1,278 +1,385 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink, NavigationMenuTrigger, NavigationMenuContent } from "@/components/ui/navigation-menu";
-import { BookOpenIcon, LayoutDashboardIcon, MenuIcon, XIcon, UserIcon, BarChart3Icon, BookTextIcon } from 'lucide-react';
-import { useState, useEffect } from "react";
+import {
+  BookOpenIcon,
+  LayoutDashboardIcon,
+  MenuIcon,
+  XIcon,
+  UserIcon,
+  BarChart3Icon,
+  BookTextIcon,
+  LogOut,
+  LogIn,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 
 // Define the props interface
 type WelcomeProps = SharedData & {
-    auth: { user: { name: string; roles: string[] } | null };
-    bookCount: number;
-    ebookCount: number;
-    userCount: number;
-    canLogin?: boolean;
-    canRegister?: boolean;
+  auth: { user: { name: string; roles: string[] } | null };
+  bookCount: number;
+  ebookCount: number;
+  userCount: number;
+  canLogin?: boolean;
+  canRegister?: boolean;
 };
 
 interface CountingStatProps {
-    endValue: number;
-    duration: number; // Duration in milliseconds
+  endValue: number;
+  duration: number; // Duration in milliseconds
 }
 
 const CountingStat: React.FC<CountingStatProps> = ({ endValue, duration }) => {
-    const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
-    useEffect(() => {
-        let startTime: number;
-        const animateCount = (timestamp: number) => {
-            if (!startTime) startTime = timestamp;
-            const progress = timestamp - startTime;
-            const percentage = Math.min(progress / duration, 1);
-            const currentValue = Math.floor(percentage * endValue);
-            setCount(currentValue);
+  useEffect(() => {
+    let startTime: number;
+    let rafId: number;
+    const animateCount = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+      const currentValue = Math.floor(percentage * endValue);
+      setCount(currentValue);
 
-            if (percentage < 1) {
-                requestAnimationFrame(animateCount);
-            }
-        };
+      if (percentage < 1) {
+        rafId = requestAnimationFrame(animateCount);
+      }
+    };
 
-        const animationFrameId = requestAnimationFrame(animateCount);
+    rafId = requestAnimationFrame(animateCount);
+    return () => cancelAnimationFrame(rafId);
+  }, [endValue, duration]);
 
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [endValue, duration]);
-
-    return <>{count.toLocaleString()}</>;
+  return <>{count.toLocaleString()}</>;
 };
 
 // NavUser Component
 interface NavUserProps {
-    auth: WelcomeProps['auth'];
-    canRegister?: boolean;
+  auth: WelcomeProps['auth'];
+  canRegister?: boolean;
 }
 
+const buttonBase =
+  'inline-flex items-center justify-center gap-1 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 active:scale-[0.98]';
+const buttonPrimary =
+  'bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500';
+const buttonSuccess =
+  'bg-green-500 text-white hover:bg-green-600 dark:hover:bg-green-500';
+const buttonDanger =
+  'bg-red-600 text-white hover:bg-red-700 dark:hover:bg-red-600';
+const buttonGhost =
+  'border border-gray-300 text-gray-900 hover:border-blue-600 dark:border-gray-600 dark:text-gray-200 dark:hover:border-blue-400';
+
 const NavUser: React.FC<NavUserProps> = ({ auth, canRegister }) => {
-    const isRegularUser = auth.user?.roles.includes('regular-user');
-    const isStaffOrAdmin = auth.user && (auth.user.roles.includes('staff') || auth.user.roles.includes('admin'));
+  const isStaffOrAdmin =
+    auth.user && (auth.user.roles.includes('staff') || auth.user.roles.includes('admin'));
 
-    return (
-        <div className="flex gap-3 ml-auto">
-            {auth.user && isRegularUser && (
-                <Link
-                    href={route('library-type-dashboard')}
-                    className="flex items-center gap-1 text-sm font-medium rounded-full bg-green-500 text-white px-4 py-2 hover:bg-green-600 transition duration-150 shadow-md"
-                >
-                    <BookOpenIcon size={16} /> Browse Books
-                </Link>
-            )}
+  return (
+    <div className="ml-auto flex items-center">
+      {auth.user ? (
+        <ButtonGroup className="items-center" orientation="horizontal">
+          <Button asChild className={`${buttonSuccess}`}>
+            <Link href={route('library-type-dashboard')} aria-label="Browse Books">
+              <BookOpenIcon size={16} />
+              ពិភពសៀវភៅ
+            </Link>
+          </Button>
 
-            {auth.user && isStaffOrAdmin && (
-                <Link
-                    href={route('dashboard')}
-                    className="flex items-center gap-1 rounded-full bg-blue-600 px-4 py-2 text-sm text-white font-medium shadow-md hover:bg-blue-700 transition duration-150"
-                >
-                    <LayoutDashboardIcon size={16} /> Dashboard
-                </Link>
-            )}
+          {isStaffOrAdmin && (
+            <Button asChild className={`${buttonPrimary}`}>
+              <Link href={route('dashboard')} aria-label="Open Dashboard">
+                <LayoutDashboardIcon size={16} />
+                ផ្ទាំងគ្រប់គ្រង
+              </Link>
+            </Button>
+          )}
 
-            {auth.user ? (
-                <Link
-                    href={route('logout')}
-                    method="post"
-                    as="button"
-                    className="px-4 py-2 text-sm font-medium rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition duration-150"
-                >
-                    Logout
-                </Link>
-            ) : (
-                <Link
-                    href={route('login')}
-                    className="px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white shadow-md hover:bg-blue-700 transition duration-150"
-                >
-                    Login
-                </Link>
-            )}
+          <Button asChild className={`${buttonDanger}`}>
+            <Link href={route('logout')} method="post" as="button" aria-label="Logout">
+              <LogOut size={16} />
+              ចាកចេញ
+            </Link>
+          </Button>
+        </ButtonGroup>
+      ) : (
+        <ButtonGroup className="items-center" orientation="horizontal">
+          <Button asChild className={`${buttonPrimary}`}>
+            <Link href={route('login')} aria-label="Login">
+              <LogIn size={16} />
+              ចុះឈ្មោះចូល
+            </Link>
+          </Button>
 
-            {!auth.user && canRegister && (
-                <Link
-                    href={route('register')}
-                    className="px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white hover:bg-blue-700 transition duration-150 shadow-md"
-                >
-                    Sign Up
-                </Link>
-            )}
-        </div>
-    );
+          {canRegister && (
+            <Button asChild className={`${buttonGhost}`}>
+              <Link href={route('register')} aria-label="Sign Up">
+                Sign Up
+              </Link>
+            </Button>
+          )}
+        </ButtonGroup>
+      )}
+    </div>
+  );
 };
 
 export default function Welcome() {
-    const { auth, bookCount, ebookCount, userCount, canLogin, canRegister } = usePage<WelcomeProps>().props;
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { auth, bookCount, ebookCount, userCount, canLogin, canRegister } =
+    usePage<WelcomeProps>().props;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const isRegularUser = auth.user?.roles.includes('regular-user');
-    const isStaffOrAdmin = auth.user && (auth.user.roles.includes('staff') || auth.user.roles.includes('admin'));
-    const totalLibraryItems = bookCount + ebookCount;
-    const animationDuration = 2000;
+  const isRegularUser = auth.user?.roles.includes('regular-user');
+  const isStaffOrAdmin =
+    auth.user && (auth.user.roles.includes('staff') || auth.user.roles.includes('admin'));
+  const totalLibraryItems = bookCount + ebookCount;
+  const animationDuration = 2000;
 
-    const handleNavigation = () => setIsMenuOpen(false);
+  const handleNavigation = () => setIsMenuOpen(false);
 
-    return (
-        <>
-            <Head title="Welcome">
-                <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
-            </Head>
+  return (
+    <>
+      <Head title="សូមស្វាគមន៏">
+        {/* <link rel="preconnect" href="https://fonts.bunny.net" />
+        <link
+          href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600"
+          rel="stylesheet"
+        /> */}
+      </Head>
 
-            <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC] font-['Instrument_Sans']">
-                <header className="w-full border-b dark:border-gray-800 shadow-sm sticky top-0 z-20 bg-[#FDFDFC]/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm">
-                    <div className="max-w-7xl mx-auto flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4 relative">
-                        <Link href="/">
-                            <img
-                                src="/images/DIS(no back).png"
-                                alt="Dewey Digital Library Logo"
-                                className="object-fill h-11 w-18 hover:scale-105 transition-transform duration-300"
-                            />
-                        </Link>
+      {/* Page wrapper with subtle gradient and grid texture */}
+      <div className="relative flex min-h-screen flex-col bg-[#F8FAFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC] font-['Instrument_Sans']">
+        {/* Ambient gradient */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_30%_10%,rgba(59,130,246,0.12)_0%,transparent_60%),radial-gradient(60%_60%_at_70%_30%,rgba(34,197,94,0.10)_0%,transparent_55%)] dark:bg-[radial-gradient(60%_60%_at_30%_10%,rgba(59,130,246,0.15)_0%,transparent_60%),radial-gradient(60%_60%_at_70%_30%,rgba(16,185,129,0.14)_0%,transparent_55%)]"
+        />
+        {/* Dotted grid overlay */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.35] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]"
+          style={{
+            backgroundImage:
+              'linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px)',
+            backgroundSize: '22px 22px',
+            backgroundPosition: 'center',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 hidden dark:block opacity-[0.16] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]"
+          style={{
+            backgroundImage:
+              'linear-gradient(#1f2937 1px, transparent 1px), linear-gradient(90deg, #1f2937 1px, transparent 1px)',
+            backgroundSize: '22px 22px',
+            backgroundPosition: 'center',
+          }}
+        />
 
-                        <div className="hidden sm:flex items-center w-full justify-end">
-                            <NavUser auth={auth} canRegister={canRegister} />
-                        </div>
+        {/* Header */}
+        <header className="sticky top-0 z-20 w-full border-b border-gray-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-gray-800/70 dark:bg-[#0a0a0a]/70">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <img
+                src="/images/dis2.png"
+                alt="Dewey Digital Library Logo"
+                className="h-18 w-auto object-contain transition-transform duration-1000 hover:scale-105 animate-pulse "
+              />
+              <span className="sr-only">Home</span>
+            </Link>
 
-                        <button
-                            className="sm:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            aria-expanded={isMenuOpen}
-                            aria-label="Toggle navigation menu"
-                        >
-                            {isMenuOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
-                        </button>
-                    </div>
-                </header>
-
-                {isMenuOpen && (
-                    <div className="sm:hidden fixed top-[64px] inset-x-0 bg-white dark:bg-[#0a0a0a] border-b dark:border-gray-800 shadow-lg z-50 p-5 transition-all duration-300">
-                        <nav className="flex flex-col gap-4">
-                            {auth.user && isRegularUser && (
-                                <Link
-                                    onClick={handleNavigation}
-                                    href={route('library-type-dashboard')}
-                                    className="px-4 py-2 text-base font-medium rounded-full bg-green-500 text-white hover:bg-green-600 transition duration-150 flex items-center justify-center gap-2 shadow-md w-full"
-                                >
-                                    <BookOpenIcon size={18} /> Browse Books
-                                </Link>
-                            )}
-
-                            <div className="mt-6 pt-4 border-t dark:border-gray-800 flex flex-col gap-3">
-                                {auth.user && isStaffOrAdmin && (
-                                    <Link
-                                        onClick={handleNavigation}
-                                        href={route('dashboard')}
-                                        className="px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white hover:bg-blue-700 transition duration-150 flex items-center justify-center gap-2 shadow-md"
-                                    >
-                                        <LayoutDashboardIcon size={16} /> Dashboard
-                                    </Link>
-                                )}
-
-                                {auth.user ? (
-                                    <Link
-                                        onClick={handleNavigation}
-                                        href={route('logout')}
-                                        method="post"
-                                        as="button"
-                                        className="px-4 py-2 text-sm font-medium rounded-full bg-red-600 text-white hover:bg-red-700 transition duration-150 shadow-md w-full"
-                                    >
-                                        Logout
-                                    </Link>
-                                ) : (
-                                    <Link
-                                        onClick={handleNavigation}
-                                        href={route('login')}
-                                        className="px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white shadow-md hover:bg-blue-700 transition duration-150 w-full text-center"
-                                    >
-                                        Sign In
-                                    </Link>
-                                )}
-                            </div>
-                        </nav>
-                    </div>
-                )}
-
-                <main className="flex flex-col items-center text-center max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32 gap-6 sm:gap-8 flex-grow">
-                    <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-0 leading-tight">
-                        {auth.user ? (
-                            <>Welcome back, <span className="text-blue-600 dark:text-blue-400 block sm:inline-block mt-2 sm:mt-0">{auth.user.name}</span></>
-                        ) : (
-                            <> <span className="text-blue-600 dark:text-blue-400">Dewey Digital Library</span></>
-                        )}
-                    </h2>
-
-                    <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 dark:text-gray-300 max-w-3xl">
-                        {auth.user ? (
-                            isStaffOrAdmin ? (
-                                <>Admin Dashboard: Manage the entire Dewey ecosystem—from inventory and user accounts to system configurations—all from your centralized dashboard.</>
-                            ) : (
-                                <>Seamlessly explore new books and e-books, track the progress of what you're currently reading, and manage your personalized library lists.</>
-                            )
-                        ) : (
-                            <>Discover a curated collection of {totalLibraryItems.toLocaleString()} titles, available in physical and digital formats. Let's get started!</>
-                        )}
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 lg:gap-10 mt-8 sm:mt-10 justify-center w-full max-w-4xl">
-                        <div className="bg-white dark:bg-[#1b1b18] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-7 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
-                            <BookOpenIcon className="mx-auto text-blue-600 dark:text-blue-400 mb-3" size={32} />
-                            <h3 className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                                <CountingStat endValue={totalLibraryItems} duration={animationDuration} />
-                            </h3>
-                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">Total Books</p>
-                        </div>
-
-                        <div className="bg-white dark:bg-[#1b1b18] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-7 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
-                            <BarChart3Icon className="mx-auto text-blue-600 dark:text-blue-400 mb-3" size={32} />
-                            <h3 className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                                <CountingStat endValue={bookCount} duration={animationDuration} />
-                            </h3>
-                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">Physical Books</p>
-                        </div>
-
-                        <div className="bg-white dark:bg-[#1b1b18] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-7 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
-                            <BookTextIcon className="mx-auto text-blue-600 dark:text-blue-400 mb-3" size={32} />
-                            <h3 className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                                <CountingStat endValue={ebookCount} duration={animationDuration} />
-                            </h3>
-                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">E-books</p>
-                        </div>
-
-                        <div className="bg-white dark:bg-[#1b1b18] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-7 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
-                            <UserIcon className="mx-auto text-blue-600 dark:text-blue-400 mb-3" size={32} />
-                            <h3 className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                                <CountingStat endValue={userCount} duration={animationDuration} />
-                            </h3>
-                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">Active Members</p>
-                        </div>
-                    </div>
-
-                    {!auth.user && canLogin && canRegister && (
-                        <div className="mt-12 sm:mt-16 flex flex-col sm:flex-row gap-4">
-                            <Link
-                                href={route('register')}
-                                className="rounded-full bg-blue-600 px-8 py-3 text-base font-semibold text-white shadow-lg hover:bg-blue-700 transition duration-150 transform hover:scale-[1.05]"
-                            >
-                                Start Your Journey Today
-                            </Link>
-                            <Link
-                                href={route('login')}
-                                className="rounded-full border-2 border-gray-400 px-8 py-3 text-base font-medium hover:border-blue-600 dark:border-gray-500 dark:hover:border-blue-400 transition duration-150 transform hover:scale-[1.05]"
-                            >
-                                Explore Catalog
-                            </Link>
-                        </div>
-                    )}
-                </main>
-
-                <footer className="mt-auto text-sm text-gray-500 dark:text-gray-400 text-center p-4 sm:p-6 border-t dark:border-gray-800">
-                    © {new Date().getFullYear()} Dewey Digital Library. All rights reserved. Powered by Dewey Steam.
-                </footer>
+            {/* Desktop actions */}
+            <div className="hidden w-full items-center justify-end sm:flex">
+              <NavUser auth={auth} canRegister={canRegister} />
             </div>
-        </>
-    );
+
+            {/* Mobile: menu toggle */}
+            <button
+              className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-300 dark:hover:bg-gray-800 sm:hidden"
+              onClick={() => setIsMenuOpen((v) => !v)}
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle navigation menu"
+            >
+              {isMenuOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
+            </button>
+          </div>
+
+          {/* Mobile dropdown */}
+          {isMenuOpen && (
+            <div className="sm:hidden">
+              <div
+                className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[1px]"
+                aria-hidden="true"
+                onClick={handleNavigation}
+              />
+              <div className="fixed inset-x-0 top-[64px] z-40 origin-top transform animate-[slideDown_180ms_ease-out] border-b border-gray-200 bg-white p-5 shadow-xl dark:border-gray-800 dark:bg-[#0a0a0a]">
+                <button
+                  aria-label="Close menu"
+                  onClick={handleNavigation}
+                  className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md bg-transparent text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <XIcon size={18} />
+                </button>
+                <nav className="flex flex-col gap-4">
+                  {auth.user ? (
+                    <ButtonGroup orientation="vertical" className="w-full">
+                      <Button asChild className={`${buttonSuccess} w-full`} onClick={handleNavigation}>
+                        <Link href={route('library-type-dashboard')} aria-label="Browse Books">
+                          <BookOpenIcon size={18} />
+                          ពិភពសៀវភៅ
+                        </Link>
+                      </Button>
+
+                      {isStaffOrAdmin && (
+                        <Button asChild className={`${buttonPrimary} w-full`} onClick={handleNavigation}>
+                          <Link href={route('dashboard')} aria-label="Open Dashboard">
+                            <LayoutDashboardIcon size={16} />
+                            ផ្ទាំងគ្រប់គ្រង
+                          </Link>
+                        </Button>
+                      )}
+
+                      <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800" />
+
+                      <Button asChild className={`${buttonDanger} w-full`} onClick={handleNavigation}>
+                        <Link href={route('logout')} method="post" as="button" aria-label="Logout">
+                          <LogOut size={16} />
+                          ចាកចេញ
+                        </Link>
+                      </Button>
+                    </ButtonGroup>
+                  ) : (
+                    <ButtonGroup orientation="vertical" className="w-full">
+                      <Button asChild className={`${buttonPrimary} w-full`} onClick={handleNavigation}>
+                        <Link href={route('login')} aria-label="Login">
+                          <LogIn size={16} />
+                          ចុះឈ្មោះចូល
+                        </Link>
+                      </Button>
+
+                      {canRegister && (
+                        <Button asChild className={`${buttonGhost} w-full`} onClick={handleNavigation}>
+                          <Link href={route('register')} aria-label="Sign Up">
+                            Sign Up
+                          </Link>
+                        </Button>
+                      )}
+                    </ButtonGroup>
+                  )}
+                </nav>
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Main */}
+        <main className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6 px-4 py-16 text-center sm:gap-8 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
+          <h2 className="mb-0 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            {auth.user ? (
+              <>
+                សូមស្វាគមន៍,{` `}
+                <span className="mt-2 block bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent dark:from-blue-400 dark:to-emerald-400 sm:mt-0 sm:inline-block">
+                  {auth.user.name}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent leading-tight tracking-tight sm:inline-block dark:from-blue-400 dark:to-emerald-400 w-400 sm:w-300">
+                  បណ្ណាល័យរបស់សាលាអន្តរជាតិ ឌូវី
+                </span>
+              </>
+            )}
+          </h2>
+
+          <p className="max-w-3xl text-lg leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl lg:text-2xl">
+            {auth.user ? (
+              isStaffOrAdmin ? (
+                <>ផ្ទាំងគ្រប់គ្រប់គ្រង៖គ្រប់គ្រងប្រព័ន្ធ  ទាំងមូល ចាប់ពីការគ្រប់គ្រងសៀវភៅ គណនីអ្នកប្រើប្រាស់ រហូតដល់ការកំណត់ប្រព័ន្ធ ទាំងអស់នៅក្នុងផ្ទាំងតែមួយ</>
+              ) : (
+                <>ស្វែងរកសៀវភៅ និងសៀវភៅអេឡិចត្រូនិកថ្មីៗ ដោយងាយស្រួល តាមដានការអានរបស់អ្នក និងគ្រប់គ្រងបញ្ជីបណ្ណាល័យផ្ទាល់ខ្លួនរបស់អ្នក</>
+              )
+            ) : (
+              <>
+                ស្វែងរកសៀវភៅចំនួន {totalLibraryItems} ក្បាលដែលមានទាំងសៀវភៅរូបវន្ត និងសៀវភៅឌីជីថល។ ចាប់ផ្តើមឥឡូវនេះ!
+              </>
+            )}
+          </p>
+
+          {/* Stats */}
+          <div className="mt-8 grid w-full max-w-4xl grid-cols-2 justify-center gap-5 sm:mt-10 sm:gap-8 md:grid-cols-4 lg:gap-10">
+            <div className="group rounded-xl border border-gray-200/70 bg-white/70 p-6 shadow-sm ring-1 ring-transparent backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-blue-100 dark:border-gray-700/70 dark:bg-[#111111]/60 dark:hover:ring-blue-900/40 sm:p-7">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 transition-colors group-hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:ring-blue-900/40">
+                <BookOpenIcon size={24} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 sm:text-3xl">
+                <CountingStat endValue={totalLibraryItems} duration={animationDuration} />
+              </h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">សៀវភៅសរុប</p>
+            </div>
+
+            <div className="group rounded-xl border border-gray-200/70 bg-white/70 p-6 shadow-sm ring-1 ring-transparent backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-blue-100 dark:border-gray-700/70 dark:bg-[#111111]/60 dark:hover:ring-blue-900/40 sm:p-7">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-blue-600 ring-1 ring-indigo-100 transition-colors group-hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-blue-400 dark:ring-indigo-900/40">
+                <BarChart3Icon size={24} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 sm:text-3xl">
+                <CountingStat endValue={bookCount} duration={animationDuration} />
+              </h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">សៀវភៅរូបវន្តសរុប</p>
+            </div>
+
+            <div className="group rounded-xl border border-gray-200/70 bg-white/70 p-6 shadow-sm ring-1 ring-transparent backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-blue-100 dark:border-gray-700/70 dark:bg-[#111111]/60 dark:hover:ring-blue-900/40 sm:p-7">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-sky-50 text-blue-600 ring-1 ring-sky-100 transition-colors group-hover:bg-sky-100 dark:bg-sky-950/30 dark:text-blue-400 dark:ring-sky-900/40">
+                <BookTextIcon size={24} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 sm:text-3xl">
+                <CountingStat endValue={ebookCount} duration={animationDuration} />
+              </h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">សៀវភៅឌីជីថលសរុប</p>
+            </div>
+
+            <div className="group rounded-xl border border-gray-200/70 bg-white/70 p-6 shadow-sm ring-1 ring-transparent backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:ring-blue-100 dark:border-gray-700/70 dark:bg-[#111111]/60 dark:hover:ring-blue-900/40 sm:p-7">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 text-blue-600 ring-1 ring-emerald-100 transition-colors group-hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-blue-400 dark:ring-emerald-900/40">
+                <UserIcon size={24} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 sm:text-3xl">
+                <CountingStat endValue={userCount} duration={animationDuration} />
+              </h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">សមាជិកសរុប</p>
+            </div>
+          </div>
+
+          {/* CTA (only for guests) */}
+          {!auth.user && canLogin && canRegister && (
+            <div className="mt-12 flex flex-col gap-4 sm:mt-16 sm:flex-row">
+              <Link
+                href={route('register')}
+                className={`${buttonBase} ${buttonPrimary} px-8 py-3 text-base shadow-lg hover:shadow-blue-200/60 dark:hover:shadow-blue-900/30`}
+              >
+                Start Your Journey Today
+              </Link>
+              <Link
+                href={route('login')}
+                className={`${buttonBase} ${buttonGhost} px-8 py-3 text-base`}
+              >
+                Explore Catalog
+              </Link>
+            </div>
+          )}
+        </main>
+
+        <footer className="mt-auto border-t border-gray-200/70 bg-white/40 p-4 text-center text-sm text-gray-600 backdrop-blur dark:border-gray-800/70 dark:bg-[#0a0a0a]/40 dark:text-gray-400 sm:p-6">
+          © {new Date().getFullYear()} រក្សាសិទ្ធិគ្រប់យ៉ាងដោយសាលាអន្តរជាតិ ឌូវី
+        </footer>
+      </div>
+
+      {/* Keyframes for mobile dropdown */}
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </>
+  );
 }

@@ -229,12 +229,12 @@ export const translations = {
 
         // ── DROPDOWN PLACEHOLDERS ───────────────
         categoryPlaceholder: "ជ្រើសប្រភេទ...",
-        subcategoryPlaceholder: "ជ្រើសប្រភេទរង (ស្រេចចិត្ត)",
+        subcategoryPlaceholder: "ជ្រើសប្រភេទរង",
         purchaseOrderPlaceholder: "ស្វែងរកលេខ PO ឬអ្នកផ្គត់ផ្គង់...",
         conditionPlaceholder: "ជ្រើសស្ថានភាព",
         statusPlaceholder: "ជ្រើសស្ថានភាព",
-        departmentPlaceholder: "ជ្រើសនាយកដ្ឋាន (ស្រេចចិត្ត)",
-        roomPlaceholder: "ជ្រើសបន្ទប់ (ស្រេចចិត្ត)",
-        custodianPlaceholder: "ជ្រើសអ្នកទទួលខុសត្រូវ (ស្រេចចិត្ត)",
+        departmentPlaceholder: "ជ្រើសនាយកដ្ឋាន",
+        roomPlaceholder: "ជ្រើសបន្ទប់",
+        custodianPlaceholder: "ជ្រើសអ្នកទទួលខុសត្រូវ",
     }
 };

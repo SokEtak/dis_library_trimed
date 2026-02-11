@@ -17,7 +17,7 @@ class StoreBookRequest extends FormRequest
     protected function prepareForValidation()
     {
         $campusId = Auth::user()->campus_id;
-        if ($this->input('type') === 'physical' && !$campusId) {
+        if ($this->input('type') === 'physical' && ! $campusId) {
             throw ValidationException::withMessages([
                 'campus_id' => 'User must have a valid campus ID for physical books.',
             ]);
@@ -29,14 +29,14 @@ class StoreBookRequest extends FormRequest
         ]);
 
         // If published_at is provided, ensure it's treated as a year
-        if ($this->has('published_at') && !empty($this->published_at)) {
+        if ($this->has('published_at') && ! empty($this->published_at)) {
             $this->merge([
                 'published_at' => (int) $this->published_at,
             ]);
         }
 
-        //set visibility to true for ebook to make sure it works correctly
-        if($this->input('type') === 'ebook'){
+        // set visibility to true for ebook to make sure it works correctly
+        if ($this->input('type') === 'ebook') {
             $this->merge([
                 'is_available' => true,
             ]);
@@ -47,6 +47,7 @@ class StoreBookRequest extends FormRequest
     public function rules()
     {
         $isEbook = $this->input('type', 'physical') === 'ebook';
+
         return [
             'type' => ['required', 'in:physical,ebook'],
             'title' => ['required', 'string', 'max:255'],

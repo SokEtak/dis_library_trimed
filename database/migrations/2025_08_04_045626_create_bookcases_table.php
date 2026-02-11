@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('bookcases', function (Blueprint $table) {
             $table->id();
-            $table->string('code',10);
+            $table->string('code', 10);
             $table->foreignId('campus_id')->nullable()->constrained('campuses')->onDelete('set null');
         });
     }

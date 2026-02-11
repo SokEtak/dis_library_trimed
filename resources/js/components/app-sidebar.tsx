@@ -60,16 +60,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <a href="/" className="flex items-center gap-3 px-2 py-1 hover:bg-sidebar-hover rounded-lg">
-                                <div className="flex-shrink-0 h-12 w-12 rounded-lg bg-sidebar-primary p-1 flex items-center justify-center">
-                                    <img src="/images/DIS(no back).png" className="h-10 w-10 object-contain" />
-                                </div>
+                            <a href="/" className="flex items-center justify-center px-2 py-1 hover:bg-sidebar-hover rounded-lg">
+                                {/* <div className="flex-shrink-0 h-12 w-16 rounded-lg bg-sidebar-primary p-0 flex items-center justify-center"> */}
+                                    <img src="/images/DIS2.png" className="h-22 w-36 object-contain mr-2" />
+                                {/* </div> */}
 
-                                <div className="flex flex-col">
-                                    <span className="font-semibold text-green-600 dark:text-green-400 text-sm">
-                                        ការិយាល័យស្ទីម
+                                {/* <div className="flex flex-col">
+                                    <span className="font-semibold text-orange-600 dark:text-orange-400 text-sm">
+                                        សក
                                     </span>
-                                </div>
+                                    <span className="font-semibold text-orange-600 dark:text-orange-400 text-sm text-center">
+                                         ឌូវី
+                                    </span>
+                                </div> */}
                             </a>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

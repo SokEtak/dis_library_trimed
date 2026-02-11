@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Campus extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'school_id',
         'name',
@@ -16,7 +19,6 @@ class Campus extends Model
         'email',
         'website',
     ];
-
 
     public function school(): BelongsTo
     {
@@ -38,11 +40,13 @@ class Campus extends Model
         return $this->hasMany(BookLoan::class);
     }
 
-    public function shelves(){
+    public function shelves()
+    {
         return $this->hasMany(Shelf::class);
     }
 
-    public function bookcases(){
+    public function bookcases()
+    {
         return $this->hasMany(Bookcase::class);
     }
 }

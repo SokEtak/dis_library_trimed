@@ -287,90 +287,90 @@ const getColumns = (
         filterFn: (row, id, value) =>
             String(row.getValue(id) || t.none).toLowerCase().includes(String(value).toLowerCase()),
     },
-    {
-        accessorKey: "campus",
-        header: ({ column }) => {
-            const campusOptions = [
-                { value: "all", label: t.campusAll, icon: null },
-                ...(campuses?.map(campus => ({
-                    value: String(campus.id), // Ensure ID is a string
-                    label: campus.name,
-                    icon: null,
-                })) || []),
-            ];
-            return (
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                        className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300`}
-                    >
-                        {translations.kh.campus}
-                        {{
-                            asc: <ArrowUp className="ml-2 h-4 w-4" />,
-                            desc: <ArrowDown className="ml-2 h-4 w-4" />,
-                        }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4" />}
-                    </Button>
-                    <Popover>
-                        <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="start" sideOffset={2}>
-                            <Command>
-                                <CommandInput placeholder={t.selectCampus} />
-                                <CommandList>
-                                    <CommandEmpty>{t.noCampus}</CommandEmpty>
-                                    <CommandGroup>
-                                        {campusOptions.map((option) => (
-                                            <CommandItem
-                                                key={option.value}
-                                                value={option.value}
-                                                onSelect={() => {
-                                                    column.setFilterValue(option.value === "all" ? undefined : option.value);
-                                                }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                {option.label}
-                                                {option.value === (column.getFilterValue() || "all") && (
-                                                    <CheckIcon className="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                                                )}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-            );
-        },
-        cell: ({ row }) => {
-            const campus = row.original.campus;
-            return (
-                <button
-                    className={`${commonStyles.text} px-3 cursor-pointer`}
-                    onClick={() => {
-                        setRowModalOpen(true);
-                        setSelectedRow(row.original);
-                    }}
-                    role="button"
-                    aria-label={
-                        campus
-                            ? `View details for user with campus ${campus.name}`
-                            : `View details for user with no campus`
-                    }
-                >
-                    {campus ? campus.name : t.none}
-                </button>
-            );
-        },
-        filterFn: (row, _id, value) => {
-            if (!value || value === "all") return true; // Allow all rows if no filter or "all" is selected
-            const campusId = row.original.campus?.id;
-            // Handle cases where campus is null or undefined
-            return campusId ? String(campusId) === String(value) : false;
-        },
-        sortingFn: (rowA, rowB) =>
-            (rowA.original.campus?.name || t.none).localeCompare(rowB.original.campus?.name || t.none),
-        enableSorting: true, // Explicitly enable sorting
-    },
+    // {
+    //     accessorKey: "campus",
+    //     header: ({ column }) => {
+    //         const campusOptions = [
+    //             { value: "all", label: t.campusAll, icon: null },
+    //             ...(campuses?.map(campus => ({
+    //                 value: String(campus.id), // Ensure ID is a string
+    //                 label: campus.name,
+    //                 icon: null,
+    //             })) || []),
+    //         ];
+    //         return (
+    //             <div className="flex items-center gap-2">
+    //                 <Button
+    //                     variant="ghost"
+    //                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //                     className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300`}
+    //                 >
+    //                     {translations.kh.campus}
+    //                     {{
+    //                         asc: <ArrowUp className="ml-2 h-4 w-4" />,
+    //                         desc: <ArrowDown className="ml-2 h-4 w-4" />,
+    //                     }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4" />}
+    //                 </Button>
+    //                 <Popover>
+    //                     <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="start" sideOffset={2}>
+    //                         <Command>
+    //                             <CommandInput placeholder={t.selectCampus} />
+    //                             <CommandList>
+    //                                 <CommandEmpty>{t.noCampus}</CommandEmpty>
+    //                                 <CommandGroup>
+    //                                     {campusOptions.map((option) => (
+    //                                         <CommandItem
+    //                                             key={option.value}
+    //                                             value={option.value}
+    //                                             onSelect={() => {
+    //                                                 column.setFilterValue(option.value === "all" ? undefined : option.value);
+    //                                             }}
+    //                                             className="flex items-center gap-2"
+    //                                         >
+    //                                             {option.label}
+    //                                             {option.value === (column.getFilterValue() || "all") && (
+    //                                                 <CheckIcon className="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+    //                                             )}
+    //                                         </CommandItem>
+    //                                     ))}
+    //                                 </CommandGroup>
+    //                             </CommandList>
+    //                         </Command>
+    //                     </PopoverContent>
+    //                 </Popover>
+    //             </div>
+    //         );
+    //     },
+    //     cell: ({ row }) => {
+    //         const campus = row.original.campus;
+    //         return (
+    //             <button
+    //                 className={`${commonStyles.text} px-3 cursor-pointer`}
+    //                 onClick={() => {
+    //                     setRowModalOpen(true);
+    //                     setSelectedRow(row.original);
+    //                 }}
+    //                 role="button"
+    //                 aria-label={
+    //                     campus
+    //                         ? `View details for user with campus ${campus.name}`
+    //                         : `View details for user with no campus`
+    //                 }
+    //             >
+    //                 {campus ? campus.name : t.none}
+    //             </button>
+    //         );
+    //     },
+    //     filterFn: (row, _id, value) => {
+    //         if (!value || value === "all") return true; // Allow all rows if no filter or "all" is selected
+    //         const campusId = row.original.campus?.id;
+    //         // Handle cases where campus is null or undefined
+    //         return campusId ? String(campusId) === String(value) : false;
+    //     },
+    //     sortingFn: (rowA, rowB) =>
+    //         (rowA.original.campus?.name || t.none).localeCompare(rowB.original.campus?.name || t.none),
+    //     enableSorting: true, // Explicitly enable sorting
+    // },
     {
         accessorKey: "roles",
         header: ({ column }) => {
@@ -446,7 +446,7 @@ const getColumns = (
             const roles = row.getValue("roles") as string[];
             return (
                 <button
-                    className={`${commonStyles.text} px-0 cursor-pointer`}
+                    className={`${commonStyles.text} px-4 cursor-pointer`}
                     onClick={() => {
                         setRowModalOpen(true);
                         setSelectedRow(row.original);
@@ -466,103 +466,103 @@ const getColumns = (
         sortingFn: (rowA, rowB) =>
             (rowA.getValue("roles") as string[]).join(", ").localeCompare((rowB.getValue("roles") as string[]).join(", ")),
     },
-    {
-        accessorKey: "permissions",
-        header: ({ column }) => {
-            const permissionOptions = [
-                ...(permissions?.map(perm => ({
-                    value: perm,
-                    label: perm,
-                })) || []),
-            ];
-            const selectedPermissions = (column.getFilterValue() as string[] | undefined) || [];
-            return (
-                <Popover>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300 flex items-center gap-2`}
-                                        aria-label={`Filter by permissions, currently ${selectedPermissions.length ? selectedPermissions.join(", ") : t.campusAll}`}
-                                    >
-                                        {translations.kh.permissions}
-                                        <Filter className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent className={commonStyles.tooltipBg}>
-                                {t.filterPermissions}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                    <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="start" sideOffset={2}>
-                        <Command>
-                            <CommandInput placeholder={t.selectPermissions} />
-                            <CommandList>
-                                <CommandEmpty>{t.noPermissions}</CommandEmpty>
-                                <CommandGroup>
-                                    {permissionOptions.map((option) => (
-                                        <CommandItem
-                                            key={option.value}
-                                            value={option.value}
-                                            onSelect={() => {
-                                                const current = (column.getFilterValue() as string[] | undefined) || [];
-                                                const newValue = current.includes(option.value)
-                                                    ? current.filter(v => v !== option.value)
-                                                    : [...current, option.value];
-                                                column.setFilterValue(newValue.length ? newValue : undefined);
-                                            }}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <div
-                                                className={`h-4 w-4 border rounded-sm flex items-center justify-center ${
-                                                    selectedPermissions.includes(option.value)
-                                                        ? "bg-indigo-600 border-indigo-600"
-                                                        : "border-gray-300"
-                                                }`}
-                                            >
-                                                {selectedPermissions.includes(option.value) && (
-                                                    <CheckIcon className="h-3 w-3 text-white" />
-                                                )}
-                                            </div>
-                                            {option.label}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-            );
-        },
-        cell: ({ row }) => {
-            const permissions = row.getValue("permissions") as string[];
-            return (
-                <button
-                    className={`${commonStyles.text} px-0 cursor-pointer`}
-                    onClick={() => {
-                        setRowModalOpen(true);
-                        setSelectedRow(row.original);
-                    }}
-                    role="button"
-                    aria-label={`View details for user with permissions ${permissions.join(", ") || t.none}`}
-                >
-                    {permissions.join(", ") || t.none}
-                </button>
-            );
-        },
-        filterFn: (row, id, value: string[] | undefined) => {
-            if (!value || value.length === 0) return true;
-            const userPermissions = row.getValue(id) as string[];
-            return value.some(v => userPermissions.includes(v));
-        },
-        sortingFn: (rowA, rowB) =>
-            (rowA.getValue("permissions") as string[])
-                .join(", ")
-                .localeCompare((rowB.getValue("permissions") as string[]).join(", ")),
-    },
+    // {
+    //     accessorKey: "permissions",
+    //     header: ({ column }) => {
+    //         const permissionOptions = [
+    //             ...(permissions?.map(perm => ({
+    //                 value: perm,
+    //                 label: perm,
+    //             })) || []),
+    //         ];
+    //         const selectedPermissions = (column.getFilterValue() as string[] | undefined) || [];
+    //         return (
+    //             <Popover>
+    //                 <TooltipProvider>
+    //                     <Tooltip>
+    //                         <TooltipTrigger asChild>
+    //                             <PopoverTrigger asChild>
+    //                                 <Button
+    //                                     variant="ghost"
+    //                                     className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300 flex items-center gap-2`}
+    //                                     aria-label={`Filter by permissions, currently ${selectedPermissions.length ? selectedPermissions.join(", ") : t.campusAll}`}
+    //                                 >
+    //                                     {translations.kh.permissions}
+    //                                     <Filter className="h-4 w-4" />
+    //                                 </Button>
+    //                             </PopoverTrigger>
+    //                         </TooltipTrigger>
+    //                         <TooltipContent className={commonStyles.tooltipBg}>
+    //                             {t.filterPermissions}
+    //                         </TooltipContent>
+    //                     </Tooltip>
+    //                 </TooltipProvider>
+    //                 <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="start" sideOffset={2}>
+    //                     <Command>
+    //                         <CommandInput placeholder={t.selectPermissions} />
+    //                         <CommandList>
+    //                             <CommandEmpty>{t.noPermissions}</CommandEmpty>
+    //                             <CommandGroup>
+    //                                 {permissionOptions.map((option) => (
+    //                                     <CommandItem
+    //                                         key={option.value}
+    //                                         value={option.value}
+    //                                         onSelect={() => {
+    //                                             const current = (column.getFilterValue() as string[] | undefined) || [];
+    //                                             const newValue = current.includes(option.value)
+    //                                                 ? current.filter(v => v !== option.value)
+    //                                                 : [...current, option.value];
+    //                                             column.setFilterValue(newValue.length ? newValue : undefined);
+    //                                         }}
+    //                                         className="flex items-center gap-2"
+    //                                     >
+    //                                         <div
+    //                                             className={`h-4 w-4 border rounded-sm flex items-center justify-center ${
+    //                                                 selectedPermissions.includes(option.value)
+    //                                                     ? "bg-indigo-600 border-indigo-600"
+    //                                                     : "border-gray-300"
+    //                                             }`}
+    //                                         >
+    //                                             {selectedPermissions.includes(option.value) && (
+    //                                                 <CheckIcon className="h-3 w-3 text-white" />
+    //                                             )}
+    //                                         </div>
+    //                                         {option.label}
+    //                                     </CommandItem>
+    //                                 ))}
+    //                             </CommandGroup>
+    //                         </CommandList>
+    //                     </Command>
+    //                 </PopoverContent>
+    //             </Popover>
+    //         );
+    //     },
+    //     cell: ({ row }) => {
+    //         const permissions = row.getValue("permissions") as string[];
+    //         return (
+    //             <button
+    //                 className={`${commonStyles.text} px-0 cursor-pointer`}
+    //                 onClick={() => {
+    //                     setRowModalOpen(true);
+    //                     setSelectedRow(row.original);
+    //                 }}
+    //                 role="button"
+    //                 aria-label={`View details for user with permissions ${permissions.join(", ") || t.none}`}
+    //             >
+    //                 {permissions.join(", ") || t.none}
+    //             </button>
+    //         );
+    //     },
+    //     filterFn: (row, id, value: string[] | undefined) => {
+    //         if (!value || value.length === 0) return true;
+    //         const userPermissions = row.getValue(id) as string[];
+    //         return value.some(v => userPermissions.includes(v));
+    //     },
+    //     sortingFn: (rowA, rowB) =>
+    //         (rowA.getValue("permissions") as string[])
+    //             .join(", ")
+    //             .localeCompare((rowB.getValue("permissions") as string[]).join(", ")),
+    // },
     {
         accessorKey: "isVerified",
         header: ({ column }) => {
@@ -624,13 +624,13 @@ const getColumns = (
         cell: ({ row }) => {
             const isVerified = row.getValue("isVerified") as number;
             const verifiedOptions = [
-                { value: 1, label: t.yes, icon: <CheckCircleIcon className="h-4 w-4 text-green-500 dark:text-green-300" /> },
-                { value: 0, label: t.no, icon: <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-300" /> },
+                { value: 1, label: t.yes, icon: <CheckCircleIcon className="h-6 w-6 text-green-500 dark:text-green-300" /> },
+                { value: 0, label: t.no, icon: <XCircleIcon className="h-6 w-6 text-red-500 dark:text-red-300" /> },
             ];
             const { icon, label } = verifiedOptions.find(opt => opt.value === isVerified) || { icon: null, label: t.none };
             return (
                 <button
-                    className={`${commonStyles.text} flex items-center gap-2 px-8 cursor-pointer`}
+                    className={`${commonStyles.text} flex items-center gap-2 px-12 cursor-pointer`}
                     onClick={() => {
                         setRowModalOpen(true);
                         setSelectedRow(row.original);
@@ -639,7 +639,7 @@ const getColumns = (
                     aria-label={`View details for user with verification status ${label}`}
                 >
                     {icon}
-                    <span>{label}</span>
+                    {/* <span>{label}</span> */}
                 </button>
             );
         },
@@ -649,92 +649,92 @@ const getColumns = (
         },
         enableSorting: false,
     },
-    {
-        accessorKey: "isActive",
-        header: ({ column }) => {
-            const statusOptions = [
-                { value: "all", label: t.all, icon: null },
-                { value: "1", label: t.yes, icon: <CheckCircleIcon className="h-4 w-4 text-green-500 dark:text-green-300" /> },
-                { value: "0", label: t.no, icon: <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-300" /> },
-            ];
-            const selectedOption = statusOptions.find(opt => opt.value === (column.getFilterValue() || "all")) || statusOptions[0];
-            return (
-                <Popover>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300 flex items-center gap-2`}
-                                        aria-label={`Filter by status, currently ${selectedOption.label}`}
-                                    >
-                                        {translations.kh.isActive}
-                                        <Filter className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent className={commonStyles.tooltipBg}>
-                                {t.filterActive}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                    <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="center" sideOffset={2}>
-                        <Command>
-                            <CommandList>
-                                <CommandEmpty>{t.noActive}</CommandEmpty>
-                                <CommandGroup>
-                                    {statusOptions.map((option) => (
-                                        <CommandItem
-                                            key={option.value}
-                                            value={option.value}
-                                            onSelect={() => {
-                                                column.setFilterValue(option.value === "all" ? undefined : option.value);
-                                            }}
-                                            className="flex items-center gap-2"
-                                        >
-                                            {option.icon}
-                                            {option.label}
-                                            {option.value === (column.getFilterValue() || "all") && (
-                                                <CheckIcon className="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                                            )}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-            );
-        },
-        cell: ({ row }) => {
-            const isActive = row.getValue("isActive") as number;
-            const statusOptions = [
-                { value: 1, label: t.yes, icon: <CheckCircleIcon className="h-4 w-4 text-green-500 dark:text-green-300" /> },
-                { value: 0, label: t.no, icon: <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-300" /> },
-            ];
-            const { icon, label } = statusOptions.find(opt => opt.value === isActive) || { icon: null, label: t.none };
-            return (
-                <button
-                    className={`${commonStyles.text} flex items-center gap-2 px-4 cursor-pointer`}
-                    onClick={() => {
-                        setRowModalOpen(true);
-                        setSelectedRow(row.original);
-                    }}
-                    role="button"
-                    aria-label={`View details for user with status ${label}`}
-                >
-                    {icon}
-                    <span>{label}</span>
-                </button>
-            );
-        },
-        filterFn: (row, id, value) => {
-            if (!value || value === "all") return true;
-            return String(row.getValue(id)) === value;
-        },
-        enableSorting: false,
-    },
+    // {
+    //     accessorKey: "isActive",
+    //     header: ({ column }) => {
+    //         const statusOptions = [
+    //             { value: "all", label: t.all, icon: null },
+    //             { value: "1", label: t.yes, icon: <CheckCircleIcon className="h-4 w-4 text-green-500 dark:text-green-300" /> },
+    //             { value: "0", label: t.no, icon: <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-300" /> },
+    //         ];
+    //         const selectedOption = statusOptions.find(opt => opt.value === (column.getFilterValue() || "all")) || statusOptions[0];
+    //         return (
+    //             <Popover>
+    //                 <TooltipProvider>
+    //                     <Tooltip>
+    //                         <TooltipTrigger asChild>
+    //                             <PopoverTrigger asChild>
+    //                                 <Button
+    //                                     variant="ghost"
+    //                                     className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300 flex items-center gap-2`}
+    //                                     aria-label={`Filter by status, currently ${selectedOption.label}`}
+    //                                 >
+    //                                     {translations.kh.isActive}
+    //                                     <Filter className="h-4 w-4" />
+    //                                 </Button>
+    //                             </PopoverTrigger>
+    //                         </TooltipTrigger>
+    //                         <TooltipContent className={commonStyles.tooltipBg}>
+    //                             {t.filterActive}
+    //                         </TooltipContent>
+    //                     </Tooltip>
+    //                 </TooltipProvider>
+    //                 <PopoverContent className={`${commonStyles.gradientBg} w-48 p-0`} align="center" sideOffset={2}>
+    //                     <Command>
+    //                         <CommandList>
+    //                             <CommandEmpty>{t.noActive}</CommandEmpty>
+    //                             <CommandGroup>
+    //                                 {statusOptions.map((option) => (
+    //                                     <CommandItem
+    //                                         key={option.value}
+    //                                         value={option.value}
+    //                                         onSelect={() => {
+    //                                             column.setFilterValue(option.value === "all" ? undefined : option.value);
+    //                                         }}
+    //                                         className="flex items-center gap-2"
+    //                                     >
+    //                                         {option.icon}
+    //                                         {option.label}
+    //                                         {option.value === (column.getFilterValue() || "all") && (
+    //                                             <CheckIcon className="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+    //                                         )}
+    //                                     </CommandItem>
+    //                                 ))}
+    //                             </CommandGroup>
+    //                         </CommandList>
+    //                     </Command>
+    //                 </PopoverContent>
+    //             </Popover>
+    //         );
+    //     },
+    //     cell: ({ row }) => {
+    //         const isActive = row.getValue("isActive") as number;
+    //         const statusOptions = [
+    //             { value: 1, label: t.yes, icon: <CheckCircleIcon className="h-6 w-6q text-green-500 dark:text-green-300" /> },
+    //             { value: 0, label: t.no, icon: <XCircleIcon className="h-6 w-6 text-red-500 dark:text-red-300" /> },
+    //         ];
+    //         const { icon, label } = statusOptions.find(opt => opt.value === isActive) || { icon: null, label: t.none };
+    //         return (
+    //             <button
+    //                 className={`${commonStyles.text} flex items-center gap-2 px-7 cursor-pointer`}
+    //                 onClick={() => {
+    //                     setRowModalOpen(true);
+    //                     setSelectedRow(row.original);
+    //                 }}
+    //                 role="button"
+    //                 aria-label={`View details for user with status ${label}`}
+    //             >
+    //                 {icon}
+    //                 {/* <span>{label}</span> */}
+    //             </button>
+    //         );
+    //     },
+    //     filterFn: (row, id, value) => {
+    //         if (!value || value === "all") return true;
+    //         return String(row.getValue(id)) === value;
+    //     },
+    //     enableSorting: false,
+    // },
     {
         accessorKey: "created_at",
         header: ({ column }) => (
@@ -771,7 +771,7 @@ const getColumns = (
 ];
 
 export default function Users({ users = [], campuses = [], roles = [], permissions = [], flash, lang = "kh" }: UsersProps) {
-    const t = translations[lang];
+    const t = translations['kh'];
     const { processing, delete: destroy } = useForm();
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [rowModalOpen, setRowModalOpen] = useState(false);
@@ -801,7 +801,7 @@ export default function Users({ users = [], campuses = [], roles = [], permissio
         <>
             <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.avatar}:</strong>{" "}
-                <img src={item.avatar} alt="User avatar" className="inline-block h-15 w-15 rounded-full" />
+                <img src={item.avatar || "N/A"} alt="User avatar" className="inline-block h-15 w-15 rounded-full" />
             </p>
             <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.name}:</strong>{" "}
@@ -811,31 +811,31 @@ export default function Users({ users = [], campuses = [], roles = [], permissio
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.email}:</strong>{" "}
                 {item.email || t.none}
             </p>
-            <p>
+            {/* <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.campus}:</strong>{" "}
                 {item.campus ? item.campus.name : t.none}
-            </p>
+            </p> */}
             <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.roles}:</strong>{" "}
                 {item.roles.join(", ") || t.none}
             </p>
-            <p>
+            {/* <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.permissions}:</strong>{" "}
                 {item.permissions.join(", ") || t.none}
-            </p>
+            </p> */}
             <div className="flex flex-row items-center gap-4">
                 <div className="flex items-center gap-2">
                     <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.isVerified}:</strong>
                     {item.isVerified ?
-                        <CircleCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> :
-                        <CircleX className="h-4 w-4 text-red-600 dark:text-red-400" />}
+                        <CircleCheck className="h-6 w-6 text-green-600 dark:text-green-400" /> :
+                        <CircleX className="h-6 w-6 text-red-600 dark:text-red-400" />}
                 </div>
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                     <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.isActive}:</strong>
                     {item.isActive ?
                         <CircleCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> :
                         <CircleX className="h-4 w-4 text-red-600 dark:text-red-400" />}
-                </div>
+                </div> */}
             </div>
             <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.createdAt}:</strong>{" "}
@@ -900,7 +900,7 @@ export default function Users({ users = [], campuses = [], roles = [], permissio
                 columns={columns}
                 breadcrumbs={breadcrumbs}
                 title={translations.kh.indexTitle}
-                resourceName={translations.en.indexTitle.toLowerCase()}
+                resourceName={translations.kh.indexTitle}
                 routes={{
                     index: route("users.index"),
                     create: route("users.create"),

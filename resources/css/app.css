@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 body {
-    font-family: 'Khmer OS Battambang',"lato",sans-serif;
+    font-family: 'Khmer OS Battambang', "lato", sans-serif;
 }
 
 @theme {
@@ -138,6 +138,14 @@ body {
         @apply border-border;
     }
 
+    html {
+        font-family: 'Khmer OS Battambang',
+            'Instrument Sans',
+            ui-sans-serif,
+            system-ui,
+            sans-serif;
+    }
+
     body {
         @apply bg-background text-foreground;
     }
@@ -163,10 +171,11 @@ body {
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+
+    body {
+        @apply bg-background text-foreground;
     }
 }

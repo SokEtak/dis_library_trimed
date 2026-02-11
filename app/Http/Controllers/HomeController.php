@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Book;
 use App\Models\User;
+use Inertia\Inertia;
 
 class HomeController extends Controller
 {
@@ -16,12 +16,12 @@ class HomeController extends Controller
         // Fetch counts from the database
         $bookCount = Book::where([
             'is_deleted' => '0',
-            'type' => 'physical'
+            'type' => 'physical',
         ])->count();
 
         $ebookCount = Book::where([
             'is_deleted' => '0',
-            'type' => 'ebook'
+            'type' => 'ebook',
         ])->count();
 
         $userCount = User::where([

@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Bookcase\StoreBookcaseRequest;
 use App\Models\Bookcase;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use Illuminate\Http\RedirectResponse;
 
 class BookcaseController extends Controller
 {
@@ -18,6 +18,7 @@ class BookcaseController extends Controller
     {
         $bookcases = Bookcase::forCurrentCampusWithBooks()->get();
 
+        // dd( $bookcases->toArray() );
         return Inertia::render('Bookcases/Index', [
             'bookcases' => $bookcases,
         ]);

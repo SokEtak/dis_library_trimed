@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -15,7 +15,7 @@ class RoleController extends Controller
             ->select('id', 'name')
             ->withCount('permissions')
             ->get();
-//        dd($roles->toArray());
+        //        dd($roles->toArray());
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
@@ -48,7 +48,7 @@ class RoleController extends Controller
 
     public function show(Role $role)
     {
-//        dd($role->toArray());
+        //        dd($role->toArray());
         return Inertia::render('Roles/Show', [
             'role' => $role->load('permissions:id,name'),
             'isSuperLibrarian' => auth()->user()->hasRole('super-librarian') ?? false,
@@ -67,7 +67,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role)
     {
         $validated = $request->validate([
-            'name' => 'required|unique:roles,name,' . $role->id,
+            'name' => 'required|unique:roles,name,'.$role->id,
             'permissions' => 'array',
             'permissions.*' => 'exists:permissions,id',
         ]);

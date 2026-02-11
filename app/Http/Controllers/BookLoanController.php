@@ -17,9 +17,21 @@ class BookLoanController extends Controller
      */
     public function index()
     {
-        $bookloans = BookLoan::with(['book', 'user'])
-            ->active($this->userCampusId())
-            ->get();
+        $query = BookLoan::with(['book', 'user'])->active($this->userCampusId());
+
+        $status = request('status');
+        $overdue = request('overdue');
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($overdue) {
+            $today = now()->timezone('Asia/Phnom_Penh')->toDateString();
+            $query->where('return_date', '<', $today)->where('status', 'processing');
+        }
+
+        $bookloans = $query->get();
 
         return Inertia::render('BookLoans/Index', [
             'bookloans' => $bookloans,
@@ -92,6 +104,11 @@ class BookLoanController extends Controller
     {
         $validated = $request->validatedWithExtras();
 
+        // If status is being set to 'returned', set returned_at to now
+        if (isset($validated['status']) && $validated['status'] === 'returned') {
+            $validated['returned_at'] = now();
+        }
+
         $bookloan->update($validated);
 
         if (in_array($bookloan->status, ['canceled', 'returned'])) {
@@ -128,7 +145,7 @@ class BookLoanController extends Controller
             return $operation();
         } catch (\Exception $e) {
             return redirect()->back()->with('flash', [
-                'error' => "Failed to $action book loan: " . $e->getMessage()
+                'error' => "Failed to $action book loan: ".$e->getMessage(),
             ]);
         }
     }
@@ -138,7 +155,7 @@ class BookLoanController extends Controller
      */
     protected function shouldRedirectIfNotStaff(): ?RedirectResponse
     {
-        return Auth::check() && !Auth::user()->hasRole('staff')
+        return Auth::check() && ! Auth::user()->hasRole('staff')
             ? redirect()->route('bookloans.index')
             : null;
     }

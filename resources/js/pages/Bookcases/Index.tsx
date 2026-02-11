@@ -205,21 +205,21 @@ const getColumns = (processing: boolean, lang: "kh" | "en" = "kh"): ColumnDef<Bo
                             <TooltipTrigger asChild>
                                 <Link
                                     href={route("bookcases.show", { bookcase: bookcase.id })}
-                                    className={`${commonStyles.text} px-13 hover:underline`}
+                                    className={`${commonStyles.text} px-3 hover:underline`}
                                 >
                                     {bookcase.active_books_count ?? 0}
                                 </Link>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className={`${commonStyles.tooltipBg} max-w-sm shadow-xl`}>
-                                <Card className="border-indigo-200 dark:border-indigo-600 bg-white dark:bg-gray-800">
-                                    <CardContent className="p-0">
-                                        <h3 className="text-sm font-semibold text-indigo-600 dark:text-indigo-300 p-2">
+                            <TooltipContent side="right" className="max-w-sm shadow-xl p-0">
+                                <Card className="border-indigo-200 dark:border-indigo-600 bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
+                                    <CardContent className="p-3">
+                                        <h3 className="text-sm font-semibold text-indigo-600 dark:text-indigo-300 pb-2">
                                             {t.indexBooksInBookcase.replace("{code}", bookcase.code)}
                                         </h3>
                                         {bookcase.books && bookcase.books.length > 0 ? (
-                                            <ul className="list-disc list-inside space-y-2 text-base text-gray-700 dark:text-gray-200 p-2">
+                                            <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 dark:text-gray-200">
                                                 {bookcase.books.map((book) => (
-                                                    <li key={book.id} className="whitespace-nowrap">
+                                                    <li key={book.id} className="break-words">
                                                         <Link
                                                             href={route("books.show", { book: book.id })}
                                                             className="text-indigo-600 dark:text-indigo-300 hover:underline"
@@ -233,14 +233,13 @@ const getColumns = (processing: boolean, lang: "kh" | "en" = "kh"): ColumnDef<Bo
                                                                     : "text-red-600 dark:text-red-400"
                                                             }`}
                                                         >
-                                                            {" "}
                                                             ({book.code})
                                                         </span>
                                                     </li>
                                                 ))}
                                             </ul>
                                         ) : (
-                                            <p className="text-sm text-gray-600 dark:text-gray-300 p-2">
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">
                                                 {t.indexNoBooks}
                                             </p>
                                         )}
@@ -304,7 +303,7 @@ export default function BookcasesIndex({ bookcases = [], flash, isSuperLibrarian
             columns={columns}
             breadcrumbs={breadcrumbs}
             title={t.indexTitle}
-            resourceName="bookcases"
+            resourceName={t.indexTitle}
             routes={{
                 index: route("bookcases.index"),
                 create: route("bookcases.create"),

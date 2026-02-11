@@ -253,7 +253,7 @@ export default function CategoriesIndex({ lang = "kh" }: { lang?: "kh" | "en" })
             columns={columns}
             breadcrumbs={breadcrumbs}
             title={t.indexTitle}
-            resourceName="categories"
+            resourceName={t.indexTitle}
             routes={{
                 index: route("categories.index"),
                 create: route("categories.create"),

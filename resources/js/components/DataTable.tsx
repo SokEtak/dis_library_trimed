@@ -104,16 +104,16 @@ const commonStyles = {
 };
 
 function DataTable<T extends DataItem>({
-                                           data = [],
-                                           columns,
-                                           breadcrumbs,
-                                           title,
-                                           resourceName,
-                                           routes,
-                                           flash,
-                                           modalFields,
-                                           isSuperLibrarian = false,
-                                       }: DataTableProps<T>) {
+    data = [],
+    columns,
+    breadcrumbs,
+    title,
+    resourceName,
+    routes,
+    flash,
+    modalFields,
+    isSuperLibrarian = false,
+}: DataTableProps<T>) {
     const { processing } = useForm();
     const [itemToDelete, setItemToDelete] = useState<T | null>(null);
     const [showAlert, setShowAlert] = useState(!!flash?.message && !!flash?.type);
@@ -209,69 +209,65 @@ function DataTable<T extends DataItem>({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
-            <div className="p-4 sm:p-6 lg:p-8">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                 {/* Main Controls Header */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4">
-                    <Input
-                        // placeholder={`ស្វែងរក ${resourceName}...`}
-                        placeholder={`ស្វែងរក`}
-                        value={globalFilter ?? ""}
-                        onChange={(event) => setGlobalFilter(event.target.value)}
-                        className={`${commonStyles.text} max-w-sm w-full md:w-auto ${commonStyles.outlineButton} focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400`}
-                        disabled={isTableLoading || processing}
-                        aria-label={`Search ${resourceName}`}
-                    />
-
-                    <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={`${commonStyles.button} ${commonStyles.outlineButton}`}
-                                    disabled={isTableLoading || processing}
-                                    aria-label="Toggle column visibility"
+                <div className="flex flex-col gap-2">
+                    <div className="flex flex-row items-center justify-between w-full">
+                        {/* Search at top left */}
+                        <div className="flex-1 flex justify-start">
+                            <Input
+                                placeholder="ស្វែងរក"
+                                value={globalFilter}
+                                onChange={e => setGlobalFilter(e.target.value)}
+                                className="max-w-sm w-full md:w-72 rounded-xl border border-indigo-200 dark:border-indigo-600 bg-white/80 dark:bg-gray-900/60 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                disabled={isTableLoading || processing}
+                            />
+                        </div>
+                        {/* Center: Column Visibility and Add Button */}
+                        <div className="flex-1 flex justify-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={`${commonStyles.button} ${commonStyles.outlineButton}`}
+                                        disabled={isTableLoading || processing}
+                                        aria-label="Toggle column visibility"
+                                    >
+                                        <Columns2 className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="center"
+                                    className="rounded-xl p-2 bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-700 shadow-xl"
                                 >
-                                    <Columns2 className="h-4 w-4" />
-                                    {/*Columns*/}
-                                </Button>
-                            </DropdownMenuTrigger>
-
-                            <DropdownMenuContent
-                                align="center"
-                                className={`${commonStyles.gradientBg} border-indigo-200 dark:border-indigo-600 rounded-xl`}
-                            >
-                                {table
-                                    .getAllColumns()
-                                    .filter((column) => column.getCanHide())
-                                    .map((column) => (
-                                        <DropdownMenuItem
-                                            key={column.id}
-                                            className="flex items-center justify-between px-3 py-2 capitalize cursor-pointer
-                                                       bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
-                                            onSelect={(e) => e.preventDefault()} // Prevent menu from closing
-                                        >
-                                            <span className={`${commonStyles.text} flex-1 flex items-center`}>
-                                              {column.id.replace(/_/g, " ")}
-                                            </span>
-
-                                            {/* Switch Button */}
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="sr-only peer"
-                                                    checked={column.getIsVisible()}
-                                                    onChange={(e) => column.toggleVisibility(e.target.checked)}
-                                                    disabled={isTableLoading || processing}
-                                                />
-                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-gray-700 peer-checked:bg-indigo-600 transition-all"></div>
-                                                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transform peer-checked:translate-x-5 transition-all"></div>
-                                            </label>
-                                        </DropdownMenuItem>
-                                    ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {!isSuperLibrarian && (
+                                    {table
+                                        .getAllColumns()
+                                        .filter((column) => column.getCanHide())
+                                        .map((column) => (
+                                            <DropdownMenuItem
+                                                key={column.id}
+                                                className="flex items-center justify-between px-3 py-2 capitalize cursor-pointer bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                                                onSelect={(e) => e.preventDefault()} // Prevent menu from closing
+                                            >
+                                                <span className={`${commonStyles.text} flex-1 flex items-center`}>
+                                                    {column.id.replace(/_/g, " ")}
+                                                </span>
+                                                {/* Switch Button */}
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="sr-only peer"
+                                                        checked={column.getIsVisible()}
+                                                        onChange={(e) => column.toggleVisibility(e.target.checked)}
+                                                        disabled={isTableLoading || processing}
+                                                    />
+                                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-gray-700 peer-checked:bg-indigo-600 transition-all"></div>
+                                                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transform peer-checked:translate-x-5 transition-all"></div>
+                                                </label>
+                                            </DropdownMenuItem>
+                                        ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button
                                 asChild
                                 className={`${commonStyles.button} ${commonStyles.indigoButton}`}
@@ -280,35 +276,46 @@ function DataTable<T extends DataItem>({
                             >
                                 <Link href={routes.create}>
                                     <Plus className="h-4 w-4" />
-                                    {/*Add {resourceName.slice(0, -1)}*/}
                                 </Link>
                             </Button>
-                        )}
+                        </div>
+                        {/* Found n item at top right */}
+                        <div className="flex-1 flex justify-end items-center">
+                            <div className={`${commonStyles.text} text-sm`}>
+                                {isTableLoading ? (
+                                    <Skeleton className="h-4 w-32" />
+                                ) : (
+                                    `${table.getFilteredRowModel().rows.length} ${resourceName}​ បានរកឃើញ.`
+                                )}
+                            </div>
+                        </div>
                     </div>
-
-
-
                 </div>
 
                 {/* Flash Alert */}
                 {showAlert && flash?.message && flash?.type && (
+                    
                     <Alert
-                        className={`mb-4 relative ${commonStyles.gradientBg} border-indigo-200 dark:border-indigo-700 rounded-xl`}
-                        variant={flash.type === "error" ? "destructive" : "default"}
+                    className="
+                        rounded-xl
+                        border border-indigo-200 dark:border-indigo-700
+                        bg-gradient-to-br
+                        from-indigo-50 to-white
+                        dark:from-indigo-900/40 dark:to-gray-900
+                    "
                     >
+
                         <CheckCircle2Icon
-                            className={`h-4 w-4 ${
-                                flash.type === "error"
-                                    ? "text-red-600 dark:text-red-300"
-                                    : "text-indigo-600 dark:text-indigo-300"
-                            }`}
+                            className={`h-4 w-4 ${flash.type === "error"
+                                ? "text-red-600 dark:text-red-300"
+                                : "text-indigo-600 dark:text-indigo-300"
+                                }`}
                         />
                         <AlertTitle
-                            className={`${
-                                flash.type === "error"
-                                    ? "text-red-600 dark:text-red-300"
-                                    : "text-indigo-600 dark:text-indigo-300"
-                            } text-sm`}
+                            className={`${flash.type === "error"
+                                ? "text-red-600 dark:text-red-300"
+                                : "text-indigo-600 dark:text-indigo-300"
+                                } text-sm`}
                         >
                             {flash.type === "error" ? "Error" : "Notification"}
                         </AlertTitle>
@@ -319,11 +326,10 @@ function DataTable<T extends DataItem>({
                             variant="ghost"
                             size="icon"
                             onClick={handleCloseAlert}
-                            className={`absolute top-3 right-3 h-6 w-6 ${
-                                flash.type === "error"
-                                    ? "text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-100"
-                                    : "text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-100"
-                            }`}
+                            className={`absolute top-3 right-3 h-6 w-6 ${flash.type === "error"
+                                ? "text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-100"
+                                : "text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-100"
+                                }`}
                             aria-label="Close alert"
                             disabled={processing}
                         >
@@ -333,14 +339,28 @@ function DataTable<T extends DataItem>({
                 )}
 
                 {/* Table Container */}
-                <div className="rounded-xl overflow-hidden shadow-lg transition-all border border-gray-200 dark:border-gray-700">
+
+                <div className="
+                rounded-2xl overflow-hidden
+                border border-gray-200 dark:border-gray-700
+                shadow-lg
+                ">
                     <Table>
-                        <TableHeader>
+                        <TableHeader
+                            className="
+                            text-sm font-semibold
+                            text-gray-700 dark:text-gray-200
+                            px-4 py-3
+                            ">
                             {table.getHeaderGroups().map((headerGroup) => (
+
                                 <TableRow
-                                    key={headerGroup.id}
-                                    // Restoring the colorful gradient header
-                                    className="bg-gradient-to-r from-purple-200 via-pink-200 to-yellow-200 dark:from-purple-900 dark:via-pink-800 dark:to-yellow-900 border-b border-gray-300 dark:border-gray-700"
+                                    className="
+                                    transition-colors
+                                    hover:bg-indigo-50/60 dark:hover:bg-indigo-900/30
+                                    data-[state='selected']:bg-indigo-100/70
+                                    dark:data-[state='selected']:bg-indigo-900/50
+                                "
                                 >
                                     {headerGroup.headers.map((header) => (
                                         <TableHead
@@ -376,14 +396,32 @@ function DataTable<T extends DataItem>({
                                         <TableRow
                                             key={row.id}
                                             data-state={selectedRow?.id === row.original.id ? 'selected' : 'unselected'}
-                                            // Restoring colorful selection state
-                                            className={`
-                                                transition-colors duration-150 cursor-pointer
-                                                border-b border-gray-200 dark:border-gray-700
-                                                hover:bg-gray-100 dark:hover:bg-gray-800/60
-                                                data-[state='selected']:bg-purple-100 dark:data-[state='selected']:bg-purple-900/50
-                                                data-[state='selected']:hover:bg-purple-100/80 dark:data-[state='selected']:hover:bg-purple-900/40
-                                            `}
+                                            className={[
+                                                // Base row styles
+                                                'transition-colors duration-150 cursor-pointer',
+                                                'border-b border-gray-200 dark:border-gray-700',
+                                                'hover:bg-gray-100 dark:hover:bg-gray-800/60',
+                                                // Selected row styles
+                                                'data-[state=\'selected\']:bg-purple-100 dark:data-[state=\'selected\']:bg-purple-900/50',
+                                                'data-[state=\'selected\']:hover:bg-purple-100/80 dark:data-[state=\'selected\']:hover:bg-purple-900/40',
+                                                // Status-based backgrounds (priority order)
+                                                row.original.status === 'canceled'
+                                                    ? 'bg-rose-100 dark:bg-rose-900/70 border-l-4 border-rose-400 dark:border-rose-700'
+                                                    : row.original.status === 'returned'
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/60 border-l-4 border-emerald-400 dark:border-emerald-700'
+                                                    : row.original.status === 'processing' && row.original.return_date && new Date(row.original.return_date) < new Date()
+                                                    ? 'bg-orange-50 dark:bg-orange-900/70 border-l-4 border-orange-400 dark:border-orange-700'
+                                                    : row.original.status === 'processing' && (!row.original.return_date || new Date(row.original.return_date) >= new Date())
+                                                    ? 'bg-yellow-50 dark:bg-yellow-800/40 border-l-4 border-yellow-400 dark:border-yellow-700'
+                                                    : '',
+                                            ].join(' ')}
+                                            style={{
+                                                boxShadow: row.original.status === 'canceled' ? '0 2px 8px 0 rgba(244, 63, 94, 0.08)' :
+                                                    row.original.status === 'returned' ? '0 2px 8px 0 rgba(16, 185, 129, 0.08)' :
+                                                    row.original.status === 'processing' && row.original.return_date && new Date(row.original.return_date) < new Date() ? '0 2px 8px 0 rgba(251, 146, 60, 0.08)' :
+                                                    row.original.status === 'processing' && (!row.original.return_date || new Date(row.original.return_date) >= new Date()) ? '0 2px 8px 0 rgba(253, 224, 71, 0.08)' :
+                                                    undefined
+                                            }}
                                             onClick={() => {
                                                 setRowModalOpen(true);
                                                 setSelectedRow(row.original);
@@ -415,49 +453,38 @@ function DataTable<T extends DataItem>({
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between gap-4 py-4">
-                    <div className={`${commonStyles.text} text-sm`}>
-                        {isTableLoading ? (
-                            <Skeleton className="h-4 w-32" />
-                        ) : (
-                            `${table.getFilteredRowModel().rows.length} ${resourceName} found.`
-                        )}
-                    </div>
-
+                <div className="flex flex-col items-center justify-center gap-4 pt-4">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className={`${commonStyles.text} text-sm whitespace-nowrap`}></span>
-                            <Select
-                                value={String(table.getState().pagination.pageSize)}
-                                onValueChange={(value) => {
-                                    if (value === "All") {
-                                        table.setPageSize(table.getFilteredRowModel().rows.length);
-                                    } else {
-                                        table.setPageSize(Number(value));
-                                    }
-                                }}
-                                disabled={isTableLoading || processing}
+                        <span className={`${commonStyles.text} text-sm whitespace-nowrap`}></span>
+                        <Select
+                            value={String(table.getState().pagination.pageSize)}
+                            onValueChange={(value) => {
+                                if (value === "All") {
+                                    table.setPageSize(table.getFilteredRowModel().rows.length);
+                                } else {
+                                    table.setPageSize(Number(value));
+                                }
+                            }}
+                            disabled={isTableLoading || processing}
+                        >
+                            <SelectTrigger
+                                className={`${commonStyles.text} h-8 w-[120px] ${commonStyles.outlineButton}`}
                             >
-                                <SelectTrigger
-                                    className={`${commonStyles.text} h-8 w-[120px] ${commonStyles.outlineButton}`}
-                                >
-                                    <SelectValue placeholder={String(table.getState().pagination.pageSize)} />
-                                </SelectTrigger>
-                                <SelectContent className={`${commonStyles.gradientBg} border-indigo-200 dark:border-indigo-600`}>
-                                    {[10, 20, 50, 100].map((pageSize) => (
-                                        <SelectItem key={pageSize} value={`${pageSize}`} className={`${commonStyles.text} text-sm`}>
-                                            {pageSize}
-                                        </SelectItem>
-                                    ))}
-                                    {table.getFilteredRowModel().rows.length > 0 && (
-                                        <SelectItem key="all" value="All" className={`${commonStyles.text} text-sm`}>
-                                            ទាំងអស់
-                                        </SelectItem>
-                                    )}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
+                                <SelectValue placeholder={String(table.getState().pagination.pageSize)} />
+                            </SelectTrigger>
+                            <SelectContent className={`${commonStyles.gradientBg} border-indigo-200 dark:border-indigo-600`}>
+                                {[10, 20, 50, 100].map((pageSize) => (
+                                    <SelectItem key={pageSize} value={`${pageSize}`} className={`${commonStyles.text} text-sm`}>
+                                        {pageSize}
+                                    </SelectItem>
+                                ))}
+                                {table.getFilteredRowModel().rows.length > 0 && (
+                                    <SelectItem key="all" value="All" className={`${commonStyles.text} text-sm`}>
+                                        ទាំងអស់
+                                    </SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
                         <div className={`${commonStyles.text} text-sm`}>
                             {isTableLoading ? (
                                 <Skeleton className="h-4 w-24" />
@@ -465,24 +492,19 @@ function DataTable<T extends DataItem>({
                                 `ទំព័រ ${table.getState().pagination.pageIndex + 1} នៃ ${table.getPageCount() || 1}`
                             )}
                         </div>
-
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="outline"
-                                size="sm"
+                                className="rounded-lg border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/40"
                                 onClick={() => table.previousPage()}
                                 disabled={!table.getCanPreviousPage() || isTableLoading || processing}
-                                className={`${commonStyles.button} ${commonStyles.outlineButton}`}
                                 aria-label="Previous page"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                             </Button>
                             <Button
-                                variant="outline"
-                                size="sm"
+                                className="rounded-lg border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/40"
                                 onClick={() => table.nextPage()}
                                 disabled={!table.getCanNextPage() || isTableLoading || processing}
-                                className={`${commonStyles.button} ${commonStyles.outlineButton}`}
                                 aria-label="Next page"
                             >
                                 <ArrowRight className="h-4 w-4" />
@@ -493,9 +515,19 @@ function DataTable<T extends DataItem>({
 
                 {/* Row Details Modal */}
                 <Dialog open={rowModalOpen} onOpenChange={setRowModalOpen}>
+
                     <DialogContent
-                        className={`${commonStyles.gradientBg} border-indigo-200 dark:border-indigo-700 rounded-2xl shadow-2xl md:max-w-lg sm:max-w-[90%] max-w-[95%] p-6 transition-all duration-300`}
+                        className="
+                        rounded-3xl
+                        p-6
+                        max-w-lg
+                        bg-gradient-to-br
+                        from-white to-indigo-50
+                        dark:from-gray-900 dark:to-indigo-950
+                        shadow-2xl
+                    "
                     >
+
                         <DialogHeader>
                             <DialogTitle className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
                                 {selectedRow?.code || `${resourceName.slice(0, -1)} Details`}

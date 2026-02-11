@@ -1,15 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectTrigger,
-    SelectContent,
-    SelectItem,
-    SelectValue,
-} from '@/components/ui/select';
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import AppearanceTabs from '@/components/appearance-tabs';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -19,24 +10,28 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { translations } from '@/utils/translations/library/translations';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    ArrowDownUp,
+    ArrowUpAZ,
+    BadgeCheck,
     ChevronLeft,
     ChevronRight,
-    Search,
-    ArrowDownUp,
-    LogIn,
-    BadgeCheck,
-    X,
-    User,
-    LogOut,
-    Menu,
-    ArrowUpAZ,
     Clock,
+    Crown,
+    Download,
     Eye,
     Globe,
-    Crown,
+    LogIn,
+    LogOut,
+    Menu,
+    Search,
+    X,
 } from 'lucide-react';
-import { translations } from '@/utils/translations/library/translations';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Book {
     language: any;
@@ -138,6 +133,20 @@ export default function Index() {
         setLanguage((prev) => (prev === 'kh' ? 'en' : 'kh'));
     };
 
+    const resetFilters = () => {
+        setSearch('');
+        setFilterCategory('All');
+        setFilterSubCategory('All');
+        setFilterBookcase('All');
+        setFilterShelf('All');
+        setFilterGrade('All');
+        setFilterSubject('All');
+        setFilterCampus('All');
+        setFilterLanguage('All');
+        setSortProgram('All');
+        setSortBy('None');
+    };
+
     const currentLibrary = bookType === 'ebook' ? 'ebook' : scope === 'global' ? 'global' : 'local';
 
     const handleLibraryChange = (value: string) => {
@@ -164,22 +173,10 @@ export default function Index() {
         }
     };
 
-    const categories = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.category?.name).filter(Boolean))),
-        [books.data]
-    );
-    const subcategories = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.subcategory?.name).filter(Boolean))),
-        [books.data]
-    );
-    const bookcases = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.bookcase?.code).filter(Boolean))),
-        [books.data]
-    );
-    const shelves = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.shelf?.code).filter(Boolean))),
-        [books.data]
-    );
+    const categories = useMemo(() => Array.from(new Set(books.data.map((b) => b.category?.name).filter(Boolean))), [books.data]);
+    const subcategories = useMemo(() => Array.from(new Set(books.data.map((b) => b.subcategory?.name).filter(Boolean))), [books.data]);
+    const bookcases = useMemo(() => Array.from(new Set(books.data.map((b) => b.bookcase?.code).filter(Boolean))), [books.data]);
+    const shelves = useMemo(() => Array.from(new Set(books.data.map((b) => b.shelf?.code).filter(Boolean))), [books.data]);
     const grades = useMemo(() => {
         const gradeNames = Array.from(
             new Set(
@@ -190,8 +187,8 @@ export default function Index() {
                         const match = name.match(/(\d+)/);
                         const num = match ? parseInt(match[0], 10) : null;
                         return num !== null && num >= 1 && num <= 12;
-                    })
-            )
+                    }),
+            ),
         );
         return gradeNames.sort((a, b) => {
             const numA = parseInt(a.match(/(\d+)/)![0], 10);
@@ -199,22 +196,10 @@ export default function Index() {
             return numA - numB;
         });
     }, [books.data]);
-    const subjects = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.subject?.name).filter(Boolean))),
-        [books.data]
-    );
-    const campuses = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.campus?.name).filter(Boolean))),
-        [books.data]
-    );
-    const languages = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.language).filter(Boolean))),
-        [books.data]
-    );
-    const programs = useMemo(
-        () => Array.from(new Set(books.data.map((b) => b.program?.toLowerCase()).filter(Boolean))),
-        [books.data]
-    );
+    const subjects = useMemo(() => Array.from(new Set(books.data.map((b) => b.subject?.name).filter(Boolean))), [books.data]);
+    const campuses = useMemo(() => Array.from(new Set(books.data.map((b) => b.campus?.name).filter(Boolean))), [books.data]);
+    const languages = useMemo(() => Array.from(new Set(books.data.map((b) => b.language).filter(Boolean))), [books.data]);
+    const programs = useMemo(() => Array.from(new Set(books.data.map((b) => b.program?.toLowerCase()).filter(Boolean))), [books.data]);
 
     const allFilteredBooks = useMemo(() => {
         let filtered = books.data.filter((book) => {
@@ -225,29 +210,17 @@ export default function Index() {
             const code = String(book.code || '');
             const query = search.toLowerCase();
 
-            const matchesSearch =
-                title.toLowerCase().includes(query) ||
-                author.toLowerCase().includes(query) ||
-                code.toLowerCase().includes(query);
+            const matchesSearch = title.toLowerCase().includes(query) || author.toLowerCase().includes(query) || code.toLowerCase().includes(query);
 
             const matchesCategory = filterCategory === 'All' || book.category?.name === filterCategory;
-            const matchesSubCategory =
-                filterSubCategory === 'All' || book.subcategory?.name === filterSubCategory;
-            const matchesBookcase =
-                bookType === 'ebook' || filterBookcase === 'All' || book.bookcase?.code === filterBookcase;
-            const matchesShelf =
-                bookType === 'ebook' || filterShelf === 'All' || book.shelf?.code === filterShelf;
+            const matchesSubCategory = filterSubCategory === 'All' || book.subcategory?.name === filterSubCategory;
+            const matchesBookcase = bookType === 'ebook' || filterBookcase === 'All' || book.bookcase?.code === filterBookcase;
+            const matchesShelf = bookType === 'ebook' || filterShelf === 'All' || book.shelf?.code === filterShelf;
             const matchesGrade = filterGrade === 'All' || book.grade?.name === filterGrade;
             const matchesSubject = filterSubject === 'All' || book.subject?.name === filterSubject;
-            const matchesCampus =
-                bookType === 'ebook' ||
-                scope !== 'local' ||
-                filterCampus === 'All' ||
-                book.campus?.name === filterCampus;
+            const matchesCampus = bookType === 'ebook' || scope !== 'local' || filterCampus === 'All' || book.campus?.name === filterCampus;
             const matchesLanguage = filterLanguage === 'All' || book.language === filterLanguage;
-            const matchesProgram =
-                sortProgram === 'All' ||
-                String(book.program || '').toLowerCase() === sortProgram.toLowerCase();
+            const matchesProgram = sortProgram === 'All' || String(book.program || '').toLowerCase() === sortProgram.toLowerCase();
 
             return (
                 matchesSearch &&
@@ -301,7 +274,7 @@ export default function Index() {
     ]);
 
     // Find the book with the highest view count
-    const maxViews = allFilteredBooks.length > 0 ? Math.max(...allFilteredBooks.map(b => b.view ?? 0)) : 0;
+    const maxViews = allFilteredBooks.length > 0 ? Math.max(...allFilteredBooks.map((b) => b.view ?? 0)) : 0;
 
     const totalPages = books.last_page;
     const paginatedBooks = allFilteredBooks;
@@ -325,8 +298,14 @@ export default function Index() {
                     sort_by: sortBy,
                     page,
                 },
-                { preserveState: true, preserveScroll: true }
+                { preserveState: true, preserveScroll: true },
             );
+            // Scroll to top after page change
+            setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100);
         }
     };
 
@@ -371,34 +350,35 @@ export default function Index() {
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
-                    className="flex items-center space-x-3 text-sm sm:text-base px-4 h-10 sm:h-11 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm"
+                    className="flex h-10 items-center space-x-3 rounded-full px-4 text-sm shadow-sm transition-colors hover:bg-gray-100 sm:h-11 sm:text-base dark:hover:bg-gray-700"
                 >
                     <img
-                        src={user.avatar ? user.avatar : 'https://via.placeholder.com/40'}
+                        src={user.avatar}
                         alt={user.name}
-                        className="h-8 w-8 rounded-full object-contain border border-gray-300 dark:border-gray-600"
+                        className="h-8 w-8 rounded-full border border-gray-300 object-contain dark:border-gray-600"
                     />
-                    <span className="truncate max-w-32 sm:max-w-48 font-medium">{user.name}</span>
+                    <span className="max-w-32 truncate font-medium sm:max-w-48">{user.name}</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700">
+            <DropdownMenuContent className="w-64 rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
                 <DropdownMenuLabel className="flex flex-col space-y-1 pb-2">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">{user.name}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-2" />
+                <AppearanceTabs className="mt-0" />
                 <DropdownMenuItem
                     onClick={toggleLanguage}
-                    className="flex items-center space-x-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-700 dark:text-gray-300"
+                    className="flex items-center space-x-2 rounded-md py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
-                    <Globe className="w-5 h-5" />
+                    <Globe className="h-5 w-5" />
                     <span>{language === 'kh' ? t.switchToEnglish : t.switchToKhmer}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={() => router.post(route('logout'))}
-                    className="flex items-center space-x-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-red-600 dark:text-red-400"
+                    className="flex items-center space-x-2 rounded-md py-2 text-red-600 transition-colors hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
                 >
-                    <LogOut className="w-5 h-5" />
+                    <LogOut className="h-5 w-5" />
                     <span>{t.logout}</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
@@ -406,147 +386,126 @@ export default function Index() {
     );
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
-            <Head
-                title={
-                    bookType === 'ebook'
-                        ? t.ebooksLibrary
-                        : t.language === 'kh'
-                            ? 'បណ្ណាល័យសៀវភៅ'
-                            : 'Books Library'
-                }
-            />
-            <div className="py-4 space-y-12 w-full max-w-full mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 text-gray-900 dark:text-gray-100">
-                <header className="flex flex-col border-b border-gray-100 dark:border-gray-800 pb-4 gap-4 px-2 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
-                    <div className="flex items-center justify-between w-full sm:w-auto">
-                        <div className="flex items-center space-x-4 sm:space-x-6 min-w-max">
-                            <Link href="/" className="flex items-center">
-                                <img
-                                    src="/images/DIS(no back).png"
-                                    alt={t.language === 'en' ? 'Logo' : 'រូបសញ្ញា'}
-                                    className="h-12 sm:h-14 w-auto sm:w-auto object-fill"
-                                />
-                            </Link>
-                        </div>
-                        <div className="flex justify-end items-center min-w-max sm:hidden">
-                            <Button
-                                variant="ghost"
-                                className="p-2"
-                                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            >
+        <div className="min-h-screen bg-gradient-to-br from-cyan-100 via-fuchsia-50 to-pink-100 transition-colors duration-300 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+            <Head title={bookType === 'ebook' ? t.ebooksLibrary : t.language === 'kh' ? 'បណ្ណាល័យសៀវភៅ' : 'Books Library'} />
+            <div className="mx-auto w-full max-w-full space-y-6 px-3 py-4 text-gray-900 sm:space-y-10 sm:px-6 sm:py-8 lg:px-12 lg:space-y-14 xl:px-16 dark:text-gray-100">
+                <header className="relative flex flex-col rounded-2xl border-b border-gray-200/60 bg-white/60 px-3 py-4 shadow-lg backdrop-blur-[6px] sm:flex-row sm:items-center sm:rounded-3xl sm:px-4 sm:py-6 sm:pb-4 dark:border-gray-800 dark:bg-gray-900/70">
+                    {/* LEFT — Logo */}
+                    <div className="flex items-center justify-between sm:w-auto sm:justify-start">
+                        <Link href="/" className="flex items-center">
+                            <img src="/images/dis2.png" alt={t.language === 'en' ? 'Logo' : 'រូបសញ្ញា'} className="h-10 w-auto sm:h-12 lg:h-14" />
+                        </Link>
+
+                        {/* Mobile menu toggle */}
+                        <div className="sm:hidden">
+                            <Button variant="ghost" className="p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                                 {isMenuOpen ? (
-                                    <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                                    <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                                 ) : (
-                                    <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                                    <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                                 )}
                             </Button>
                         </div>
                     </div>
-                    <div className="relative w-full max-w-md sm:max-w-lg sm:mx-auto md:left-30">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-gray-400 dark:text-gray-500" />
+
+                    {/* CENTER — Search */}
+                    <div className="relative w-full mt-3 sm:mt-0 sm:absolute sm:top-1/2 sm:left-1/2 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2">
+                        <Search className="absolute top-1/2 left-4 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-cyan-400 dark:text-cyan-300" />
                         <Input
                             placeholder={t.searchPlaceholder}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className={`w-full bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 rounded-full shadow-inner pl-10 h-10 sm:h-11
-                    dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500
-                      focus:ring-2 focus:ring-${accentColor}-500 focus:border-${accentColor}-500 transition-all pr-3 text-sm sm:text-base`}
+                            className="h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl border border-cyan-200 bg-white/80 pr-12 pl-10 sm:pl-12 text-xs sm:text-base shadow-lg transition-all focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400 dark:border-cyan-900 dark:bg-gray-800/80 dark:text-white"
+                            aria-label={language === 'en' ? 'Search books' : 'ស្វែងរកសៀវភៅ'}
                         />
+
+                        {/* Clear search button */}
+                        {search && (
+                            <Button
+                                variant="ghost"
+                                onClick={() => setSearch('')}
+                                className="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                                aria-label={language === 'en' ? 'Clear search' : 'សម្អាត'}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
-                    <div className="hidden sm:w-auto sm:flex justify-end items-center min-w-max">
-                        {isAuthenticated && <NavUser user={auth.user!} />}
-                    </div>
+
+                    {/* RIGHT — User */}
+                    <div className="hidden items-center sm:ml-auto sm:flex">{isAuthenticated && <NavUser user={auth.user!} />}</div>
+
+                    {/* MOBILE MENU */}
                     {isMenuOpen && (
-                        <div className="sm:hidden absolute top-20 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl p-4 w-48 z-50">
+                        <div className="absolute top-16 right-3 z-50 w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-xl sm:hidden dark:border-gray-700 dark:bg-gray-800">
                             {isAuthenticated ? (
                                 <>
-                                    <div className="flex flex-col space-y-2 mb-4 border-b pb-3 border-gray-100 dark:border-gray-700">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {auth.user!.name}
-                    </span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {auth.user!.email}
-                    </span>
+                                    <div className="mb-3 flex flex-col space-y-1 border-b border-gray-100 pb-3 dark:border-gray-700">
+                                        <span className="truncate text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">{auth.user!.name}</span>
+                                        <span className="truncate text-xs text-gray-500 dark:text-gray-400">{auth.user!.email}</span>
                                     </div>
+                                    <AppearanceTabs className="mt-0" />
                                     <button
                                         onClick={toggleLanguage}
-                                        className="flex items-center space-x-2 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md w-full text-left"
+                                        className="flex w-full items-center space-x-2 rounded-md py-2 px-1 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                                     >
-                                        <Globe className="w-4 h-4" />
+                                        <Globe className="h-4 w-4" />
                                         <span>{language === 'kh' ? t.switchToEnglish : t.switchToKhmer}</span>
                                     </button>
+
                                     <button
-                                        onClick={() => {
-                                            router.post(route('logout'), {}, { onSuccess: () => setIsMenuOpen(false) });
-                                        }}
-                                        className="flex items-center space-x-2 py-2 text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md w-full text-left"
+                                        onClick={() => router.post(route('logout'))}
+                                        className="flex w-full items-center space-x-2 rounded-md py-2 px-1 text-xs sm:text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
                                     >
-                                        <LogOut className="w-4 h-4" />
+                                        <LogOut className="h-4 w-4" />
                                         <span>{t.logout}</span>
                                     </button>
                                 </>
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="flex items-center space-x-2 py-2 text-cyan-600 dark:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                                    onClick={() => setIsMenuOpen(false)}
+                                    className="flex items-center space-x-2 rounded-md py-2 px-1 text-xs sm:text-sm text-cyan-600 hover:bg-gray-100 dark:text-cyan-400 dark:hover:bg-gray-700"
                                 >
-                                    <LogIn className="w-4 h-4" />
+                                    <LogIn className="h-4 w-4" />
                                     <span>{t.signIn}</span>
                                 </Link>
                             )}
                         </div>
                     )}
                 </header>
+
                 {flash.message && (
-                    <div className="p-4 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-lg shadow-lg">
-                        {flash.message}
-                    </div>
+                    <div className="rounded-lg bg-green-100 p-4 text-green-800 shadow-lg dark:bg-green-900 dark:text-green-200">{flash.message}</div>
                 )}
-                <div className="flex flex-col sm:flex-row flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-4 justify-center">
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-cyan-100 bg-white/60 p-4 shadow-lg backdrop-blur-[4px] sm:gap-4 sm:p-6 dark:border-cyan-900 dark:bg-gray-900/60">
                     <Select value={currentLibrary} onValueChange={handleLibraryChange}>
                         <SelectTrigger
-                            className={`w-full sm:w-auto min-w-max bg-white border border-gray-300 text-gray-900 hover:border-gray-400
-                                                dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:border-gray-600
-                                                  focus:ring-${accentColor}-500 transition rounded-full text-sm sm:text-base text-center px-2`}
+                            className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs text-center leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
                         >
                             <SelectValue placeholder={t.selectLibrary} className="whitespace-nowrap" />
                         </SelectTrigger>
-                        <SelectContent className="w-auto bg-white border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                            <SelectItem value="global">{t.globalLibrary}</SelectItem>
-                            <SelectItem value="local">{t.localLibrary}</SelectItem>
-                            <SelectItem value="ebook">{t.ebooksLibrary}</SelectItem>
+
+                        <SelectContent className="w-auto max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                            {/* <SelectItem value="global" className="px-3 py-2 text-center break-words">
+                                {t.globalLibrary}
+                            </SelectItem> */}
+                            <SelectItem value="local" className="px-3 py-2 text-center break-words">
+                                {t.localLibrary}
+                            </SelectItem>
+                            <SelectItem value="ebook" className="px-3 py-2 text-center break-words">
+                                {t.ebooksLibrary}
+                            </SelectItem>
                         </SelectContent>
                     </Select>
 
-                    <Select value={sortProgram} onValueChange={setSortProgram}>
-                        <SelectTrigger
-                            className={`w-full sm:w-auto min-w-max bg-white border border-gray-300 text-gray-900 hover:border-gray-400
-                                     dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:border-gray-600
-                                       focus:ring-${accentColor}-500 transition rounded-full text-sm sm:text-base text-center`}
-                        >
-                            <SelectValue placeholder={t.programPlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-w-[150px] max-w-[90vw]">
-                            <SelectItem value="All" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
-                                {t.programAll}
-                            </SelectItem>
-                            <SelectItem value="Cambodia" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
-                                {t.programCambodia}
-                            </SelectItem>
-                            <SelectItem value="American" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
-                                {t.programAmerican}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
                     {[
-                        { label: t.category, value: filterCategory, onChange: setFilterCategory, options: categories },
-                        { label: t.subcategory, value: filterSubCategory, onChange: setFilterSubCategory, options: subcategories },
+                        // { label: t.category, value: filterCategory, onChange: setFilterCategory, options: categories },
+                        // { label: t.subcategory, value: filterSubCategory, onChange: setFilterSubCategory, options: subcategories },
                         ...(bookType === 'physical'
                             ? [
-                                { label: t.bookcase, value: filterBookcase, onChange: setFilterBookcase, options: bookcases },
-                                { label: t.shelf, value: filterShelf, onChange: setFilterShelf, options: shelves },
-                            ]
+                                  { label: t.bookcase, value: filterBookcase, onChange: setFilterBookcase, options: bookcases },
+                                  { label: t.shelf, value: filterShelf, onChange: setFilterShelf, options: shelves },
+                              ]
                             : []),
                         {
                             label: t.language,
@@ -554,31 +513,42 @@ export default function Index() {
                             onChange: setFilterLanguage,
                             options: languages,
                             display: (lang: string) =>
-                                lang === 'en' ? (t.language === 'en' ? 'English' : 'អង់គ្លេស') : lang === 'kh' ? (t.language === 'en' ? 'Khmer' : 'ខ្មែរ') : lang,
+                                lang === 'en'
+                                    ? t.language === 'en'
+                                        ? 'English'
+                                        : 'ភាសាអង់គ្លេស'
+                                    : lang === 'kh'
+                                      ? t.language === 'en'
+                                          ? 'Khmer'
+                                          : 'ភាសាខ្មែរ'
+                                      : lang,
                         },
                         { label: t.grade, value: filterGrade, onChange: setFilterGrade, options: grades },
                         { label: t.subject, value: filterSubject, onChange: setFilterSubject, options: subjects },
-                        ...(bookType === 'physical' && scope === 'global'
-                            ? [{ label: t.campus, value: filterCampus, onChange: setFilterCampus, options: campuses }]
-                            : []),
+                        // ...(bookType === 'physical' && scope === 'global'
+                        //     ? [{ label: t.campus, value: filterCampus, onChange: setFilterCampus, options: campuses }]
+                        //     : []),
                     ].map(({ label, value, onChange, options, display }) => (
                         <Select key={label} value={value} onValueChange={onChange}>
                             <SelectTrigger
-                                className={`lg:w-auto sm:w-auto md:w-auto bg-white border border-gray-300 text-gray-900 hover:border-gray-400
-                          dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:border-gray-600
-                          focus:ring-${accentColor}-500 transition rounded-full text-sm sm:text-base px-2 sm:text-center`}
+                                className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
                             >
                                 <SelectValue placeholder={label} />
                             </SelectTrigger>
-                            <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-w-[150px] max-w-[90vw]">
-                                <SelectItem value="All" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
+
+                            <SelectContent className="max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                                <SelectItem
+                                    value="All"
+                                    className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                                >
                                     {language === 'en' ? `${allText} ${label}` : `${label}${allText}`}
                                 </SelectItem>
+
                                 {options.map((opt) => (
                                     <SelectItem
                                         key={opt}
                                         value={opt}
-                                        className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal"
+                                        className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
                                     >
                                         {display ? display(opt) : opt}
                                     </SelectItem>
@@ -588,43 +558,47 @@ export default function Index() {
                     ))}
                     <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger
-                            className={`w-full sm:w-auto min-w-max bg-white border border-gray-300 text-gray-900 hover:border-gray-400
-      dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:border-gray-600
-      focus:ring-${accentColor}-500 transition rounded-full text-sm sm:text-base text-center flex items-center justify-center`}
+                            className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 flex h-auto min-h-[2.5rem] items-center justify-center rounded-full px-3 py-2 text-xs leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
                         >
                             {sortBy === 'Title A-Z' ? (
-                                <ArrowUpAZ className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400" />
+                                <ArrowUpAZ className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
                             ) : sortBy === 'Newest' ? (
-                                <Clock className="h-4 w-4 mr-2 text-red-500 dark:text-red-400" />
+                                <Clock className="mr-2 h-4 w-4 text-red-500 dark:text-red-400" />
                             ) : sortBy === 'Most Viewed' ? (
-                                <Eye className="h-4 w-4 mr-2 text-orange-500 dark:text-orange-400" />
+                                <Eye className="mr-2 h-4 w-4 text-orange-500 dark:text-orange-400" />
                             ) : (
-                                <ArrowDownUp className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                                <ArrowDownUp className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                             )}
-                            <SelectValue placeholder={t.sortBy} />
+                            <SelectValue placeholder={t.sortBy} className="whitespace-nowrap" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-w-[150px] max-w-[90vw]">
-                            <SelectItem value="None" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
+
+                        <SelectContent className="max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                            <SelectItem value="None" className="px-3 py-2 text-center whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700">
                                 {t.defaultSort}
                             </SelectItem>
-                            <SelectItem value="Newest" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
+                            <SelectItem value="Newest" className="px-3 py-2 text-center whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700">
                                 {t.newest}
                             </SelectItem>
-                            <SelectItem value="Title A-Z" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
+                            <SelectItem
+                                value="Title A-Z"
+                                className="px-3 py-2 text-center whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
                                 {t.titleAZ}
                             </SelectItem>
-                            <SelectItem value="Most Viewed" className="hover:bg-gray-100 dark:hover:bg-gray-700 text-center whitespace-normal">
+                            <SelectItem
+                                value="Most Viewed"
+                                className="px-3 py-2 text-center whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
                                 {t.mostViewed}
                             </SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6 lg:gap-8">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-4 md:gap-8 lg:grid-cols-5 lg:gap-10 xl:grid-cols-6 2xl:grid-cols-6">
                     {paginatedBooks.length > 0 ? (
                         paginatedBooks.map((book) => {
                             const contributorId = book.posted_by_user_id || book.user?.id;
-                            const contributorName =
-                                book.user?.name || (contributorId ? `អ្នកប្រើ #${contributorId}` : t.unknownContributor);
+                            const contributorName = book.user?.name || (contributorId ? `អ្នកប្រើ #${contributorId}` : t.unknownContributor);
                             const isContributorVerified = !!book.user?.isVerified;
 
                             return (
@@ -634,85 +608,143 @@ export default function Index() {
                                     onKeyDown={(e) => e.key === 'Enter' && router.get(route('library.show', book.id))}
                                     tabIndex={0}
                                     aria-label={`View details for ${book.title} by ${book.author}`}
-                                    className={`group flex flex-col items-start space-y-3 cursor-pointer p-4 rounded-xl bg-white border border-gray-200 shadow-md
-                        dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/40
-                        transition-all duration-300 transform
-                        hover:scale-[1.03] sm:hover:scale-[1.05] hover:shadow-xl hover:border-image-linear-gradient-to-right-#3b82f6-#ec4899
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 w-full`}
+                                    className={`group relative flex w-full transform cursor-pointer flex-col items-start space-y-2 sm:space-y-3 overflow-hidden rounded-2xl sm:rounded-3xl border border-cyan-100 bg-white/70 p-3 sm:p-6 shadow-xl sm:shadow-2xl backdrop-blur-[6px] transition-all duration-300 hover:scale-[1.04] sm:hover:scale-[1.06] hover:shadow-[0_8px_32px_0_rgba(34,211,238,0.18)] focus:ring-2 focus:ring-cyan-300 focus:outline-none dark:border-cyan-900 dark:bg-gray-900/80 dark:shadow-cyan-900/40 dark:focus:ring-cyan-600`}
                                 >
-                                    <div className="relative w-full pb-[140%] sm:pb-[155%]">
+                                    <div className="pointer-events-none absolute inset-0 z-0 rounded-3xl bg-gradient-to-br from-cyan-100/30 via-fuchsia-100/20 to-pink-100/30 dark:from-cyan-900/20 dark:via-fuchsia-900/10 dark:to-pink-900/20" />
+                                    <div className="relative z-10 w-full pb-[140%] sm:pb-[155%]">
                                         <img
                                             src={book.cover || '/images/placeholder-book.png'}
                                             alt={book.title}
                                             loading="lazy"
-                                            className="absolute inset-0 w-full h-full object-fill rounded-lg shadow-md transition-all duration-300 group-hover:scale-105"
+                                            className="absolute inset-0 h-full w-full rounded-2xl border border-cyan-100 object-fit shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:brightness-105 group-hover:contrast-110 dark:border-cyan-900"
                                         />
+
+                                        {/* Hover overlay with quick actions */}
+                                        <div className="absolute inset-0 z-20 flex items-end justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                                            <div className="mb-2 sm:mb-4 flex w-[95%] sm:w-[92%] items-center justify-between rounded-lg bg-gradient-to-r from-black/40 to-black/20 px-2 sm:px-3 py-1 sm:py-2 text-white backdrop-blur-sm">
+                                                <div className="min-w-0 truncate text-xs sm:text-sm">
+                                                    <div className="truncate font-semibold leading-10">{book.author || t.unknownContributor}</div>
+                                                    <div className="truncate text-xs opacity-80 leading-5">
+                                                        {book.page_count ? `${book.page_count} ${language === 'en' ? 'pages' : 'ទំព័រ'}` : ''}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 sm:space-x-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.get(route('library.show', book.id));
+                                                        }}
+                                                        className="rounded-full bg-white/10 p-1 sm:p-2 text-white hover:bg-white/20 flex-shrink-0"
+                                                        aria-label={language === 'en' ? 'View details' : 'មើលលំអិត'}
+                                                    >
+                                                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-blue-300 dark:text-blue-400" />
+                                                    </button>
+
+                                                    {/* {book.downloadable && book.pdf_url && (
+                                                        <a
+                                                            href={book.pdf_url}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="rounded-full bg-white/10 p-1 sm:p-2 text-white hover:bg-white/20 flex-shrink-0"
+                                                            aria-label={language === 'en' ? 'Download PDF' : 'ទាញយក PDF'}
+                                                        >
+                                                            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                                                        </a>
+                                                    )} */}
+                                                </div>
+                                            </div>
+                                        </div>
 
                                         {/* Most Viewed Badge */}
                                         {book.view === maxViews && (
-                                            <div className="absolute top-2 right-2 flex items-center space-x-1 bg-yellow-400/95 dark:bg-yellow-500/95 text-gray-900 text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm
-                                border border-yellow-300 dark:border-yellow-400">
-                                                <Crown className="w-3 h-3 text-yellow-700 dark:text-yellow-800" />
+                                            <div className="absolute top-2 right-2 flex animate-pulse items-center space-x-1 rounded-xl border border-yellow-300 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-500 px-2.5 py-1 text-[10px] font-semibold text-gray-900 shadow-lg sm:text-xs dark:border-yellow-400 dark:from-yellow-500 dark:to-yellow-600">
+                                                <Crown className="h-3 w-3 text-yellow-700 dark:text-yellow-800" />
                                                 <span>{t.mostViewed}</span>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Book Title and Author with Tooltip */}
-                                    <div className="text-center w-full">
-                                        <div className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate" title={book.title}>
+                                    <div className="z-10 w-full text-center">
+                                        <div
+                                            className="truncate text-base sm:text-lg lg:text-xl leading-10 font-extrabold text-gray-900 drop-shadow-md dark:text-gray-100"
+                                            title={book.title}
+                                        >
                                             {book.title}
                                         </div>
-                                        {/*<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate" title={book.author}>*/}
-                                        {/*    {book.author}*/}
-                                        {/*</div>*/}
                                     </div>
 
-                                    <div className="flex items-center justify-center space-x-2 pt-2 border-t border-gray-100 dark:border-gray-700 w-full">
+                                    <div className="z-10 flex w-full items-center justify-center space-x-2 border-t border-cyan-100 pt-1 sm:pt-2 dark:border-cyan-900">
                                         <img
                                             src={book.user?.avatar ? book.user.avatar : '/images/placeholder-book.png'}
                                             alt={t.language === 'en' ? "Contributor's avatar" : 'រូបភាពអ្នកបរិច្ចាគ'}
                                             loading="lazy"
-                                            className="w-6 h-6 rounded-full object-cover border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                                            className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 rounded-full border-2 border-cyan-200 object-fit shadow-md transition-all group-hover:ring-2 group-hover:ring-cyan-300 dark:border-cyan-800"
                                         />
-                                        <span className="text-xs text-gray-400 dark:text-gray-500 truncate font-medium flex items-center min-w-0">
-                            <span className="truncate flex-grow" title={contributorName}>{contributorName}</span>
+                                        <span className="flex min-w-0 items-center truncate text-xs sm:text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                            <span className="flex-grow truncate" title={contributorName}>
+                                                {contributorName}
+                                            </span>
                                             {isContributorVerified && (
-                                                <BadgeCheck className="w-4 h-4 ml-1 text-blue-500 dark:text-blue-400 fill-white dark:fill-gray-900 flex-shrink-0" />
+                                                <BadgeCheck className="ml-1 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 fill-white text-cyan-500 dark:fill-gray-900 dark:text-cyan-400" />
                                             )}
-                        </span>
+                                        </span>
                                     </div>
                                 </div>
                             );
                         })
                     ) : (
-                        <p className="text-center text-gray-500 dark:text-gray-400 col-span-full py-12 sm:py-20 text-base sm:text-xl font-light">
-                            {t.noBooksFound.replace('{type}', bookType === 'ebook' ? t.bookType.ebook : t.bookType.physical)}
-                        </p>
+                        <div className="col-span-full flex flex-col items-center justify-center py-12 sm:py-20 md:py-32">
+                            <div className="animate-fade-in mb-4 sm:mb-6 flex h-24 w-24 sm:h-32 sm:w-32 lg:h-36 lg:w-36 items-center justify-center rounded-full bg-gradient-to-br from-cyan-200 via-fuchsia-100 to-pink-200 shadow-lg sm:shadow-2xl dark:from-cyan-900 dark:via-fuchsia-900 ">
+                                <img src="/images/empty-state.svg" alt="No books found" className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 opacity-90" />
+                            </div>
+                            <p className="mb-4 sm:mb-6 text-center text-lg sm:text-2xl lg:text-3xl font-light tracking-wide text-gray-400 px-4 dark:text-gray-500">
+                                {t.noBooksFound.replace('{type}', bookType === 'ebook' ? t.bookType.ebook : t.bookType.physical)}
+                            </p>
+
+                            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                                <Button onClick={resetFilters} className="rounded-full px-6 py-3 w-full sm:w-auto" variant="secondary">
+                                    {language === 'en' ? 'Reset filters' : 'ពិនិត្យម្តងទៀត'}
+                                </Button>
+                                <Link
+                                    href={route(
+                                        currentLibrary === 'ebook'
+                                            ? 'global e-library'
+                                            : currentLibrary === 'global'
+                                              ? 'global library'
+                                              : 'local library',
+                                    )}
+                                    className="w-full sm:w-auto rounded-full px-6 py-3 text-center text-cyan-700 font-semibold border border-cyan-200 hover:bg-cyan-50 transition dark:border-cyan-800 dark:hover:bg-cyan-950/30"
+                                >
+                                    {language === 'en' ? 'Explore library' : 'ស្វែងរកបណ្ណាល័យ'}
+                                </Link>
+                            </div>
+                        </div>
                     )}
                 </div>
                 {totalPages > 1 && (
-                    <div className="flex justify-center items-center space-x-4 pt-8 pb-4">
+                    <div className="flex flex-col gap-4 items-center justify-center pt-12 pb-8 sm:flex-row sm:gap-6">
                         <Button
                             onClick={goToPreviousPage}
                             disabled={currentPage === 1}
                             variant="outline"
-                            className={`flex items-center text-${accentColor}-600 dark:text-${accentColor}-400 disabled:opacity-50 text-sm sm:text-base px-3 sm:px-4 h-10 sm:h-11`}
+                            className={`w-full sm:w-auto flex h-12 sm:h-14 items-center justify-center rounded-full border-cyan-200 bg-white/70 px-4 sm:px-6 text-sm sm:text-lg font-semibold text-cyan-600 shadow-lg transition-all hover:bg-cyan-50 disabled:opacity-50 dark:border-cyan-900 dark:bg-gray-900/70 dark:text-cyan-400 dark:hover:bg-cyan-950`}
                         >
-                            <ChevronLeft className="w-4 sm:w-5 h-4 sm:h-5 mr-1" />
+                            <ChevronLeft className="mr-2 h-4 w-4 sm:h-6 sm:w-6" />
                             {t.previous}
                         </Button>
-                        <span className="text-sm sm:text-md font-semibold text-gray-700 dark:text-gray-300">
-              {t.pageOf.replace('{current}', String(currentPage)).replace('{total}', String(totalPages))}
-            </span>
+                        <span className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-lg font-bold text-gray-700 shadow-md whitespace-nowrap dark:border-cyan-900 dark:bg-cyan-900/70 dark:text-gray-300">
+                            {t.pageOf.replace('{current}', String(currentPage)).replace('{total}', String(totalPages))}
+                        </span>
                         <Button
                             onClick={goToNextPage}
                             disabled={currentPage === totalPages}
                             variant="outline"
-                            className={`flex items-center text-${accentColor}-600 dark:text-${accentColor}-400 disabled:opacity-50 text-sm sm:text-base px-3 sm:px-4 h-10 sm:h-11`}
+                            className={`w-full sm:w-auto flex h-12 sm:h-14 items-center justify-center rounded-full border-cyan-200 bg-white/70 px-4 sm:px-6 text-sm sm:text-lg font-semibold text-cyan-600 shadow-lg transition-all hover:bg-cyan-50 disabled:opacity-50 dark:border-cyan-900 dark:bg-gray-900/70 dark:text-cyan-400 dark:hover:bg-cyan-950`}
                         >
                             {t.next}
-                            <ChevronRight className="w-4 sm:w-5 h-4 sm:h-5 ml-1" />
+                            <ChevronRight className="ml-2 h-4 w-4 sm:h-6 sm:w-6" />
                         </Button>
                     </div>
                 )}

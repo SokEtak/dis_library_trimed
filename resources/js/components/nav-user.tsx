@@ -108,14 +108,14 @@ export function NavUser({ user }: { user: User | null }) {
                             <DropdownMenuItem asChild>
                                 <a href={route('profile.edit')}>
                                     <Settings className="h-4 w-4" />
-                                    Settings
+                                    ការកំណត់
                                 </a>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout} disabled={processing}>
-                            <LogOut className="h-4 w-4" />
-                            Log out
+                            <LogOut className="h-4 w-4 text-red-400 dark:text-red-500" />
+                            ចាកចេញ
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

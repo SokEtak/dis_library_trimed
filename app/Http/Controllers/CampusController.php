@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Campus\CampusRequest;
 use App\Models\Campus;
 use App\Models\School;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
 
 class CampusController extends Controller
 {
@@ -22,7 +22,7 @@ class CampusController extends Controller
 
         return Inertia::render('Campuses/Index', [
             'campuses' => $campuses,
-            'flash'    => session('flash'),
+            'flash' => session('flash'),
             'isSuperLibrarian' => auth()->user()?->hasRole('super-librarian') ?? false,
             'lang' => app()->getLocale(),
         ]);

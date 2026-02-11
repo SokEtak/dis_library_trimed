@@ -9,40 +9,49 @@ use Inertia\Inertia;
 
 class SubCategoryController extends Controller
 {
-    public function index() {
+    public function index()
+    {
         $subcategories = SubCategory::with('category:id,name')->get();
+
         return Inertia::render('SubCategories/Index', [
             'subcategories' => $subcategories,
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function show(SubCategory $subcategory) {
+    public function show(SubCategory $subcategory)
+    {
         return Inertia::render('SubCategories/Show', [
             'subcategory' => $subcategory->load('category:id,name'),
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function create() {
+    public function create()
+    {
         $categories = Category::select('id', 'name')->get();
+
         return Inertia::render('SubCategories/Create', [
             'categories' => $categories,
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function store(Request $request) {;
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:sub_categories,name',
             'category_id' => 'required|exists:categories,id',
         ]);
         SubCategory::create($validated);
+
         return redirect()->route('subcategories.index')->with('message', 'Subcategory created successfully.');
     }
 
-    public function edit(SubCategory $subcategory) {
+    public function edit(SubCategory $subcategory)
+    {
         $categories = Category::select('id', 'name')->get();
+
         return Inertia::render('SubCategories/Edit', [
             'subcategory' => $subcategory->load('category:id,name'),
             'categories' => $categories,
@@ -50,7 +59,8 @@ class SubCategoryController extends Controller
         ]);
     }
 
-    public function update(Request $request, SubCategory $subcategory) {
+    public function update(Request $request, SubCategory $subcategory)
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',

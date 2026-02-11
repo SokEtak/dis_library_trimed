@@ -20,7 +20,7 @@ return new class extends Migration
             $table->year('published_at')->nullable()->change();
             $table->enum('language', ['kh', 'en'])->default('kh');
             $table->enum('program', ['Cambodia', 'American'])->nullable();
-            $table->year('published_at')->nullable();//publish year
+            $table->year('published_at')->nullable(); // publish year
             $table->string('cover')->nullable();
             $table->string('pdf_url')->nullable();
             $table->string('flip_link')->nullable();

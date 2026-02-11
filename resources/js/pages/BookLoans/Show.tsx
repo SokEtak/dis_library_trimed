@@ -38,6 +38,7 @@ interface Book {
 interface BookLoan {
     id: number;
     return_date: string;
+    returned_at: string | null;
     book_id: number;
     user_id: number;
     book: Book | null;
@@ -85,7 +86,7 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
             href: route("bookloans.index"),
         },
         {
-            title: t.na, // Using t.na for "Details" as per translation
+            title: t.details || "ព័ត៌មានលម្អិត",
             href: "",
         },
     ];
@@ -201,6 +202,17 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
                                 ) : (
                                     <span className="text-gray-500 dark:text-gray-400">{t.na}</span>
                                 )}
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {t.returnedAt || "Returned At"}
+                            </label>
+                            <p
+                                className="px-4 py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-600 transition-all duration-300"
+                                aria-label={`${t.returnedAt || "Returned At"}: ${loan.returned_at || t.na}`}
+                            >
+                                {loan.returned_at || t.na}
                             </p>
                         </div>
                         <div className="space-y-2">

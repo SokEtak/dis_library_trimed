@@ -42,6 +42,7 @@ interface Book {
 interface BookLoan {
     id: number;
     return_date: string;
+    returned_at: string | null;
     book_id: number;
     user_id: number;
     book: Book | null;

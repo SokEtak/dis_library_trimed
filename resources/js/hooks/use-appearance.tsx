@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type Appearance = 'light' | 'dark' | 'system';
+export type Appearance = 'light' | 'dark' | 'system' | 'custom';
 
 const prefersDark = () => {
     if (typeof window === 'undefined') {
@@ -22,7 +22,12 @@ const setCookie = (name: string, value: string, days = 365) => {
 const applyTheme = (appearance: Appearance) => {
     const isDark = appearance === 'dark' || (appearance === 'system' && prefersDark());
 
+    // Toggle the built-in dark class
     document.documentElement.classList.toggle('dark', isDark);
+
+    // Toggle a custom theme class when `custom` is selected.
+    // Consumers can style `.custom-theme` or target it with CSS variables.
+    document.documentElement.classList.toggle('custom-theme', appearance === 'custom');
 };
 
 const mediaQuery = () => {

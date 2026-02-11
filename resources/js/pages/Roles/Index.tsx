@@ -248,7 +248,7 @@ export default function RolesIndex({
                 columns={columns}
                 breadcrumbs={breadcrumbs}
                 title={t.indexTitle || 'Roles'}
-                resourceName="roles"
+                resourceName={t.indexTitle}
                 routes={{
                     index: route('roles.index'),
                     create: route('roles.create'),

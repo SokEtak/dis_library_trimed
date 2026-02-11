@@ -22,10 +22,10 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
-        //append campus
+        // append campus
         $campus = Campus::all(['id', 'name', 'code']);
 
-        return Inertia::render('auth/register',['campus' => $campus]);
+        return Inertia::render('auth/register', ['campus' => $campus]);
     }
 
     /**
@@ -43,10 +43,10 @@ class RegisteredUserController extends Controller
                 'lowercase',
                 'email',
                 'max:255',
-                'unique:' . User::class,
+                'unique:'.User::class,
                 function ($attribute, $value, $fail) {
                     $allowedDomain = 'diu.edu.kh';
-                    if (!str_ends_with($value, '@' . $allowedDomain)) {
+                    if (! str_ends_with($value, '@'.$allowedDomain)) {
                         $fail("Only Dewey Organization's email addresses are allowed to register.");
                     }
                 },
@@ -55,7 +55,7 @@ class RegisteredUserController extends Controller
             'code' => 'required|exists:campuses,code',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // Max 5MB
-            'role_id' => 'nullable|exists:roles,id'
+            'role_id' => 'nullable|exists:roles,id',
         ]);
 
         $imageUrl = null;
@@ -71,7 +71,8 @@ class RegisteredUserController extends Controller
                 $imageUrl = Storage::disk('public')->url($imagePath);
 
             } catch (\Exception $e) {
-                \Log::error('Failed to upload avatar to R2: ' . $e->getMessage());
+                \Log::error('Failed to upload avatar to R2: '.$e->getMessage());
+
                 return back()->withErrors(['avatar' => 'Failed to upload avatar. Please try again later.']);
             }
         }

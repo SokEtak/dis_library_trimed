@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -37,13 +38,13 @@ class PermissionController extends Controller
             ->with('success', 'Permissions created successfully.');
     }
 
-        public function show(Permission $permission)
-        {
-            return Inertia::render('Permissions/Show', [
-                'permission' => $permission,
-                'isSuperLibrarian' => auth()->user()->hasRole('super-librarian') ?? false,
-            ]);
-        }
+    public function show(Permission $permission)
+    {
+        return Inertia::render('Permissions/Show', [
+            'permission' => $permission,
+            'isSuperLibrarian' => auth()->user()->hasRole('super-librarian') ?? false,
+        ]);
+    }
 
     public function edit(Permission $permission)
     {
@@ -56,7 +57,7 @@ class PermissionController extends Controller
     public function update(Request $request, Permission $permission)
     {
         $validated = $request->validate([
-            'name' => 'required|unique:permissions,name,' . $permission->id,
+            'name' => 'required|unique:permissions,name,'.$permission->id,
         ]);
 
         $permission->update(['name' => $validated['name']]);
@@ -64,5 +65,4 @@ class PermissionController extends Controller
         return redirect()->route('permissions.index')
             ->with('success', 'Permissions updated successfully.');
     }
-
 }

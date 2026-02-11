@@ -25,7 +25,7 @@ interface Category {
     name: string;
 }
 
-interface Subcategory {
+interface SubCategory {
     id: number;
     name: string;
 }
@@ -52,7 +52,7 @@ interface Subject {
 
 interface BooksCreateProps {
     categories: Category[];
-    subcategories: Subcategory[];
+    subcategories: SubCategory[];
     shelves: Shelf[];
     bookcases: Bookcase[];
     grades: Grade[];
@@ -230,8 +230,13 @@ const FileField: React.FC<FileFieldProps> = ({
                                             )}
                                             {onPreviewClick && (
                                                 <Button
+                                                    type="button"
                                                     variant="link"
-                                                    onClick={onPreviewClick}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        onPreviewClick();
+                                                    }}
                                                     className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                     aria-label={`${t.preview} ${selectedFileName}`}
                                                 >
@@ -345,7 +350,7 @@ export default function BooksCreate({
     const [type, setType] = useState<'physical' | 'ebook'>('physical');
     const isEbook = type === 'ebook';
     const [categories, setCategories] = useState(initialCategories);
-    const [subcategories, setSubcategories] = useState(initialSubcategories);
+    const [subcategories, setSubcategories] = useState<SubCategory[]>(initialSubcategories);
     const [shelves, setShelves] = useState(initialShelves);
     const [bookcases, setBookcases] = useState(initialBookcases);
     const [grades, setGrades] = useState(initialGrades);
@@ -357,11 +362,11 @@ export default function BooksCreate({
         //where to set initial form value
         title: '',
         description: '',
-        page_count: '1',
+        page_count: '',
         publisher: '',
         language: 'kh',
         program: '',
-        published_at: '201',
+        published_at: '20',
         author: '',
         flip_link: '',
         cover: null,
@@ -370,7 +375,7 @@ export default function BooksCreate({
         view: '0',
         is_available: !isEbook,
         pdf_url: null,
-        category_id: '5',
+        category_id: '1',
         subcategory_id: '',
         shelf_id: isEbook ? '' : '',
         bookcase_id: isEbook ? '' : '',
@@ -404,8 +409,8 @@ export default function BooksCreate({
             author: '',
             flip_link: '',
             cover: null,
-            code: 'J6-0',
-            isbn: '978',
+            code: '',
+            isbn: '',
             view: '0',
             is_available: !isEbook,
             pdf_url: null,
@@ -507,12 +512,14 @@ export default function BooksCreate({
                 setData(field, null);
                 e.target.value = '';
                 setPdfFileError(t.pdfFileError);
+                setPdfPreviewUrl(null);
                 return;
             }
             if (file.size > 30 * 1024 * 1024) {
                 setData(field, null);
                 e.target.value = '';
-                setPdfFileError('ឯកសារ PDF លើស ៣៦MB។ សូមផ្ទុកឡើងឯកសារតូចជាង។');
+                setPdfFileError('ឯកសារ PDF លើស ៣០ មេកាបៃ។ សូមផ្ទុកឡើងឯកសារតូចជាង។');
+                setPdfPreviewUrl(null);
                 return;
             }
             setPdfFileError(null);
@@ -539,6 +546,8 @@ export default function BooksCreate({
         }
     };
 
+    console.log(subcategories)
+
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -550,10 +559,14 @@ export default function BooksCreate({
         }
         if (file.type !== 'application/pdf') {
             setPdfFileError(t.pdfFileError);
+            setData('pdf_url', null);
+            setPdfPreviewUrl(null);
             return;
         }
         if (file.size > 30 * 1024 * 1024) {
-            setPdfFileError('ឯកសារ PDF លើស ៣៦MB។ សូមទម្លាក់ឯកសារតូចជាង។');
+            setPdfFileError('ឯកសារ PDF លើស ៣០ មេកាបៃ។ សូមទម្លាក់ឯកសារតូចជាង។');
+            setData('pdf_url', null);
+            setPdfPreviewUrl(null);
             return;
         }
         setPdfFileError(null);
@@ -577,6 +590,13 @@ export default function BooksCreate({
                 setCoverPreviewUrl(null);
                 setPdfPreviewUrl(null);
                 setPdfFileError(null);
+                // Show flash message if is_continue is checked
+                if (data.is_continue) {
+                    toast(t.bookCreated, {
+                        description: t.continueSuccess || 'Book created and ready to add another.',
+                        duration: 4000,
+                    });
+                }
             },
             onError: (errors) => {
                 setShowErrorAlert(true);
@@ -657,7 +677,8 @@ export default function BooksCreate({
                                                 }`}
                                                 disabled={tab === 'audio'}
                                             >
-                                                {t[tab as keyof typeof t]} {tab === 'audio' && t.comingSoon}
+                                                {t[tab as keyof typeof t]} 
+                                                {tab === 'audio' && t.comingSoon}
                                             </button>
                                         ))}
                                     </nav>
@@ -1004,7 +1025,7 @@ export default function BooksCreate({
                                 </div>
                             </div>
 
-                            <div className="col-span-full space-y-4">
+                            {/* <div className="col-span-full space-y-4">
                                 <div>
                                     <Label htmlFor="program" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                         {t.program}
@@ -1105,7 +1126,7 @@ export default function BooksCreate({
                                         {isEbook ? t.downloadableHelper : t.availabilityHelper}
                                     </p>
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Classification */}
                             <div className="col-span-full">
@@ -1143,7 +1164,7 @@ export default function BooksCreate({
                                                         <SelectValue placeholder={t.categoryPlaceholder} />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                        <SelectItem value="none">គ្មាន</SelectItem>
+                                                        {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                         {categories.map((cat) => (
                                                             <SelectItem key={cat.id} value={cat.id.toString()}>
                                                                 {cat.name}
@@ -1184,7 +1205,7 @@ export default function BooksCreate({
                                                         <SelectValue placeholder={t.gradePlaceholder} />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                        <SelectItem value="none">គ្មាន</SelectItem>
+                                                        {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                         {grades.map((grade) => (
                                                             <SelectItem key={grade.id} value={grade.id.toString()}>
                                                                 {grade.name}
@@ -1235,9 +1256,12 @@ export default function BooksCreate({
                                                         <SelectValue placeholder={t.subcategoryPlaceholder} />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                        <SelectItem value="none">គ្មាន</SelectItem>
+                                                        {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                         {(subcategories || [])
-                                                            .filter((subcat) => Number(data.category_id) === subcat.category_id)
+                                                            .filter((subcat) => {
+                                                                // If SubCategory has category_id, filter by it; otherwise, show all
+                                                                return subcat.category_id ? Number(data.category_id) === subcat.category_id : true;
+                                                            })
                                                             .map((subcat) => (
                                                                 <SelectItem key={subcat.id} value={subcat.id.toString()}>
                                                                     {subcat.name}
@@ -1280,7 +1304,7 @@ export default function BooksCreate({
                                                         <SelectValue placeholder={t.subjectPlaceholder} />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                        <SelectItem value="none">គ្មាន</SelectItem>
+                                                        {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                         {subjects.map((subject) => (
                                                             <SelectItem key={subject.id} value={subject.id.toString()}>
                                                                 {subject.name}
@@ -1339,7 +1363,7 @@ export default function BooksCreate({
                                                                 <SelectValue placeholder={t.bookcasePlaceholder} />
                                                             </SelectTrigger>
                                                             <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                                <SelectItem value="none">គ្មាន</SelectItem>
+                                                                {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                                 {bookcases.map((bookcase) => (
                                                                     <SelectItem key={bookcase.id} value={bookcase.id.toString()}>
                                                                         {bookcase.code}
@@ -1393,7 +1417,7 @@ export default function BooksCreate({
                                                                 <SelectValue placeholder={t.shelfPlaceholder} />
                                                             </SelectTrigger>
                                                             <SelectContent className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800">
-                                                                <SelectItem value="none">គ្មាន</SelectItem>
+                                                                {/* <SelectItem value="none">គ្មាន</SelectItem> */}
                                                                 {shelves.map((shelf) => (
                                                                     <SelectItem key={shelf.id} value={shelf.id.toString()}>
                                                                         {shelf.code}
@@ -1437,7 +1461,6 @@ export default function BooksCreate({
                                         setCoverPreviewUrl(null);
                                     }}
                                     selectedFileName={data.cover?.name}
-                                    fileError={pdfFileError}
                                 />
                             </div>
                             {isEbook && (
@@ -1464,6 +1487,10 @@ export default function BooksCreate({
                                         fileError={pdfFileError}
                                         required
                                     />
+                                    {/* PDF max size message below PDF area */}
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+                                        {t.pdfMaxSize || 'PDF file must be less than 30MB.'}
+                                    </p>
                                 </div>
                             )}
 
@@ -1506,7 +1533,7 @@ export default function BooksCreate({
 
                         {/* Cover Preview Modal */}
                         <Dialog open={isCoverModalOpen} onOpenChange={setIsCoverModalOpen}>
-                            <DialogContent className="max-w-2xl border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                            <DialogContent className="max-w-4xl border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                                 <DialogHeader>
                                     <DialogTitle className="text-gray-900 dark:text-gray-100">{t.coverPreview}</DialogTitle>
                                 </DialogHeader>
@@ -1521,7 +1548,7 @@ export default function BooksCreate({
                         {/* PDF Preview Modal */}
                         {isEbook && (
                             <Dialog open={isPdfModalOpen} onOpenChange={setIsPdfModalOpen}>
-                                <DialogContent className="max-w-4xl border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                                <DialogContent className="max-w-8xl border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                                     <DialogHeader>
                                         <DialogTitle className="text-gray-900 dark:text-gray-100">{t.pdfPreview}</DialogTitle>
                                     </DialogHeader>

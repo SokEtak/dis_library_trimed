@@ -9,16 +9,17 @@ class BookLoanRequest extends FormRequest
 {
     public function authorize()
     {
-        return $this->user()->hasRole('staff');
+        return true;
     }
 
     public function rules()
     {
         return [
             'return_date' => 'required|date',
+            'returned_at' => 'nullable|date',
             'book_id' => 'required|exists:books,id',
             'user_id' => 'required|exists:users,id',
-            'status'  => 'required|in:processing,canceled,returned',
+            'status' => 'required|in:processing,canceled,returned',
         ];
     }
 

@@ -19,6 +19,8 @@ const translations = {
         confirmPassword: "បញ្ជាក់លេខសម្ងាត់",
         avatar: "រូបភាព",
         roles: "តួនាទី",
+        accountInfo: "ព័ត៌មានគណនី",
+        otherInfo: "ព័ត៌មានផ្សេងៗ",
         permissions: "សិទ្ធិ",
         campus: "សាខា",
         none: "គ្មាន",

@@ -1,6 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+// Simple Tabs component (copied from Create)
+function Tabs({ tabs, activeTab, setActiveTab }) {
+    return (
+        <div className="mb-6 border-b border-gray-200 dark:border-gray-700 flex space-x-2">
+            {tabs.map((tab, idx) => (
+                <button
+                    key={tab}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none transition-colors duration-200 ${
+                        activeTab === idx
+                            ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500'
+                            : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-800'
+                    }`}
+                    onClick={() => setActiveTab(idx)}
+                    type="button"
+                >
+                    {tab}
+                </button>
+            ))}
+        </div>
+    );
+}
 import { Button } from "@/components/ui/button";
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Input } from "@/components/ui/input";
@@ -266,6 +287,10 @@ export default function UsersEdit({ user, roles = [], permissions = [], campuses
         { title: t.editTitle, href: route("users.edit", user.id) },
     ];
 
+    // Tab state and labels (copied from Create)
+    const tabLabels = [t.accountInfo, t.roles, t.otherInfo];
+    const [activeTab, setActiveTab] = useState(0);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={translations.kh.editTitle} />
@@ -313,220 +338,230 @@ export default function UsersEdit({ user, roles = [], permissions = [], campuses
                         )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name Input */}
-                            <div>
-                                <Label htmlFor="name" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.name}
-                                </Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    value={data.name}
-                                    onChange={handleNameChange}
-                                    className={`${commonStyles.input} mt-2`}
-                                    aria-required="true"
-                                    aria-label={t.name}
-                                />
-                                {errors.name && <p className={commonStyles.error}>{errors.name}</p>}
-                            </div>
-
-                            {/* Email Input */}
-                            <div>
-                                <Label htmlFor="email" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.email}
-                                </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    value={data.email}
-                                    readOnly
-                                    className={`${commonStyles.input} mt-2 bg-gray-100 dark:bg-gray-700 cursor-not-allowed`}
-                                    aria-required="true"
-                                    aria-label={t.email}
-                                />
-                                {errors.email && <p className={commonStyles.error}>{errors.email}</p>}
-                            </div>
-
-                            {/* Password Input */}
-                            <div>
-                                <Label htmlFor="password" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.password}
-                                </Label>
-                                <div className="relative mt-2">
-                                    <Input
-                                        id="password"
-                                        type={showPassword ? "text" : "password"}
-                                        value={data.password}
-                                        onChange={(e) => setData("password", e.target.value)}
-                                        className={`${commonStyles.input} pr-10`}
-                                        aria-label={t.password}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                                        aria-label={showPassword ? t.hidePassword : t.showPassword}
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="h-5 w-5" />
-                                        ) : (
-                                            <Eye className="h-5 w-5" />
-                                        )}
-                                    </button>
-                                </div>
-                                {errors.password && <p className={commonStyles.error}>{errors.password}</p>}
-                            </div>
-
-                            {/* Confirm Password Input */}
-                            <div>
-                                <Label htmlFor="password_confirmation" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.confirmPassword}
-                                </Label>
-                                <div className="relative mt-2">
-                                    <Input
-                                        id="password_confirmation"
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        value={data.password_confirmation}
-                                        onChange={(e) => setData("password_confirmation", e.target.value)}
-                                        className={`${commonStyles.input} pr-10`}
-                                        aria-label={t.confirmPassword}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                                        aria-label={showConfirmPassword ? t.hidePassword : t.showPassword}
-                                    >
-                                        {showConfirmPassword ? (
-                                            <EyeOff className="h-5 w-5" />
-                                        ) : (
-                                            <Eye className="h-5 w-5" />
-                                        )}
-                                    </button>
-                                </div>
-                                {errors.password_confirmation && (
-                                    <p className={commonStyles.error}>{errors.password_confirmation}</p>
-                                )}
-                            </div>
-
-                            {/* Avatar Input */}
-                            <div>
-                                <Label htmlFor="avatar" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.avatar}
-                                </Label>
-                                <div className="mt-2 flex items-center space-x-4">
-                                    <Input
-                                        id="avatar"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleAvatarChange}
-                                        className={`${commonStyles.input} file:text-indigo-500 file:dark:text-indigo-400 file:bg-transparent file:border-0 file:cursor-pointer`}
-                                        aria-label={t.uploadAvatar}
-                                    />
-                                    {avatarPreview && (
-                                        <img
-                                            src={avatarPreview}
-                                            alt="Avatar preview"
-                                            className="h-16 w-16 rounded-full object-fill border-2 border-indigo-200 dark:border-indigo-600 shadow-md cursor-pointer hover:opacity-90 transition-opacity"
-                                            onClick={() => setIsAvatarModalOpen(true)}
-                                        />
-                                    )}
-                                </div>
-                                {errors.avatar && <p className={commonStyles.error}>{errors.avatar}</p>}
-                            </div>
-
-                            {/* Roles Input */}
-                            <div>
-                                <Label htmlFor="roles" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.roles}
-                                </Label>
-                                <MultiSelect
-                                    options={roles}
-                                    selected={data.roles}
-                                    setSelected={(roles) => setData("roles", roles)}
-                                    placeholder={t.selectRoles}
-                                />
-                                {errors.roles && <p className={commonStyles.error}>{errors.roles}</p>}
-                            </div>
-
-                            {/* Permissions Input */}
-                            <div>
-                                <Label htmlFor="permissions" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.permissions}
-                                </Label>
-                                <MultiSelect
-                                    options={permissions}
-                                    selected={data.permissions}
-                                    setSelected={(permissions) => setData("permissions", permissions)}
-                                    placeholder={t.selectPermissions}
-                                />
-                                {errors.permissions && <p className={commonStyles.error}>{errors.permissions}</p>}
-                            </div>
-
-                            {/* Campuses Input */}
-                            <div>
-                                <Label htmlFor="campus_id" className="text-base text-gray-900 dark:text-gray-50">
-                                    {t.campus}
-                                </Label>
-                                <Select
-                                    value={data.campus_id}
-                                    onValueChange={(value) => setData("campus_id", value)}
-                                >
-                                    <SelectTrigger className={`${commonStyles.input} mt-2`} aria-label={t.selectCampus}>
-                                        <SelectValue placeholder={t.selectCampus} />
-                                    </SelectTrigger>
-                                    <SelectContent className={`${commonStyles.card}`}>
-                                        {campuses.map((campus) => (
-                                            <SelectItem key={campus.id} value={String(campus.id)}>
-                                                {campus.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.campus_id && <p className={commonStyles.error}>{errors.campus_id}</p>}
-                            </div>
-
-                            {/* Wrapper for inline layout on small screens and up */}
-                            <div className="flex flex-col sm:flex-row sm:space-x-8">
-
-                                {/* isVerified Input Group */}
-                                <div className="flex flex-col">
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            id="isVerified"
-                                            type="checkbox"
-                                            checked={data.isVerified}
-                                            onChange={(e) => setData("isVerified", e.target.checked)}
-                                            className="h-4 w-4 accent-indigo-500"
-                                            aria-label={t.isVerified}
-                                        />
-                                        <Label htmlFor="isVerified" className="text-base text-gray-900 dark:text-gray-50">
-                                            {t.isVerified}
+                            <Tabs tabs={tabLabels} activeTab={activeTab} setActiveTab={setActiveTab} />
+                            {activeTab === 0 && (
+                                <div className="space-y-6">
+                                    {/* Name Input */}
+                                    <div>
+                                        <Label htmlFor="name" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.name}
                                         </Label>
-                                    </div>
-                                    {errors.isVerified && <p className={`mt-1 text-sm text-red-600 ${commonStyles.error}`}>{errors.isVerified}</p>}
-                                </div>
-
-                                {/* isActive Input Group */}
-                                <div className="flex flex-col mt-4 sm:mt-0">
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            id="isActive"
-                                            type="checkbox"
-                                            checked={data.isActive}
-                                            onChange={(e) => setData("isActive", e.target.checked)}
-                                            className="h-4 w-4 accent-indigo-500"
-                                            aria-label={t.isActive}
+                                        <Input
+                                            id="name"
+                                            type="text"
+                                            value={data.name}
+                                            onChange={handleNameChange}
+                                            className={`${commonStyles.input} mt-2`}
+                                            aria-required="true"
+                                            aria-label={t.name}
                                         />
-                                        <Label htmlFor="isActive" className="text-base text-gray-900 dark:text-gray-50">
-                                            {t.isActive}
-                                        </Label>
+                                        {errors.name && <p className={commonStyles.error}>{errors.name}</p>}
                                     </div>
-                                    {errors.isActive && <p className={`mt-1 text-sm text-red-600 ${commonStyles.error}`}>{errors.isActive}</p>}
+
+                                    {/* Email Input */}
+                                    <div>
+                                        <Label htmlFor="email" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.email}
+                                        </Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={data.email}
+                                            readOnly
+                                            className={`${commonStyles.input} mt-2 bg-gray-100 dark:bg-gray-700 cursor-not-allowed`}
+                                            aria-required="true"
+                                            aria-label={t.email}
+                                        />
+                                        {errors.email && <p className={commonStyles.error}>{errors.email}</p>}
+                                    </div>
+
+                                    {/* Password Input */}
+                                    <div>
+                                        <Label htmlFor="password" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.password}
+                                        </Label>
+                                        <div className="relative mt-2">
+                                            <Input
+                                                id="password"
+                                                type={showPassword ? "text" : "password"}
+                                                value={data.password}
+                                                onChange={(e) => setData("password", e.target.value)}
+                                                className={`${commonStyles.input} pr-10`}
+                                                aria-label={t.password}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                                aria-label={showPassword ? t.hidePassword : t.showPassword}
+                                            >
+                                                {showPassword ? (
+                                                    <EyeOff className="h-5 w-5" />
+                                                ) : (
+                                                    <Eye className="h-5 w-5" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        {errors.password && <p className={commonStyles.error}>{errors.password}</p>}
+                                    </div>
+
+                                    {/* Confirm Password Input */}
+                                    <div>
+                                        <Label htmlFor="password_confirmation" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.confirmPassword}
+                                        </Label>
+                                        <div className="relative mt-2">
+                                            <Input
+                                                id="password_confirmation"
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                value={data.password_confirmation}
+                                                onChange={(e) => setData("password_confirmation", e.target.value)}
+                                                className={`${commonStyles.input} pr-10`}
+                                                aria-label={t.confirmPassword}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                                aria-label={showConfirmPassword ? t.hidePassword : t.showPassword}
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff className="h-5 w-5" />
+                                                ) : (
+                                                    <Eye className="h-5 w-5" />
+                                                )}
+                                            </button>
+                                        </div>
+                                        {errors.password_confirmation && (
+                                            <p className={commonStyles.error}>{errors.password_confirmation}</p>
+                                        )}
+                                    </div>
                                 </div>
+                            )}
+                            {activeTab === 1 && (
+                                <div className="space-y-6">
+                                    {/* Roles Input */}
+                                    <div>
+                                        <Label htmlFor="roles" className="text-base text-gray-900 dark:text-gray-50 mb-2">
+                                            {t.roles}
+                                        </Label>
+                                        <MultiSelect
+                                            options={roles}
+                                            selected={data.roles}
+                                            setSelected={(roles) => setData("roles", roles)}
+                                            placeholder={t.selectRoles}
+                                        />
+                                        {errors.roles && <p className={commonStyles.error}>{errors.roles}</p>}
+                                    </div>
 
-                            </div>
+                                    {/* Permissions Input */}
+                                    {/* <div>
+                                        <Label htmlFor="permissions" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.permissions}
+                                        </Label>
+                                        <MultiSelect
+                                            options={permissions}
+                                            selected={data.permissions}
+                                            setSelected={(permissions) => setData("permissions", permissions)}
+                                            placeholder={t.selectPermissions}
+                                        />
+                                        {errors.permissions && <p className={commonStyles.error}>{errors.permissions}</p>}
+                                    </div> */}
+                                </div>
+                            )}
+                            {activeTab === 2 && (
+                                <div className="space-y-6">
+                                    {/* Avatar Input */}
+                                    <div>
+                                        <Label htmlFor="avatar" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.avatar}
+                                        </Label>
+                                        <div className="mt-2 flex items-center space-x-4">
+                                            <Input
+                                                id="avatar"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleAvatarChange}
+                                                className={`${commonStyles.input} file:text-indigo-500 file:dark:text-indigo-400 file:bg-transparent file:border-0 file:cursor-pointer`}
+                                                aria-label={t.uploadAvatar}
+                                            />
+                                            {avatarPreview && (
+                                                <img
+                                                    src={avatarPreview}
+                                                    alt="Avatar preview"
+                                                    className="h-16 w-16 rounded-full object-fill border-2 border-indigo-200 dark:border-indigo-600 shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                                                    onClick={() => setIsAvatarModalOpen(true)}
+                                                />
+                                            )}
+                                        </div>
+                                        {errors.avatar && <p className={commonStyles.error}>{errors.avatar}</p>}
+                                    </div>
 
+                                    {/* Campuses Input */}
+                                    {/* <div>
+                                        <Label htmlFor="campus_id" className="text-base text-gray-900 dark:text-gray-50">
+                                            {t.campus}
+                                        </Label>
+                                        <Select
+                                            value={data.campus_id}
+                                            onValueChange={(value) => setData("campus_id", value)}
+                                        >
+                                            <SelectTrigger className={`${commonStyles.input} mt-2`} aria-label={t.selectCampus}>
+                                                <SelectValue placeholder={t.selectCampus} />
+                                            </SelectTrigger>
+                                            <SelectContent className={`${commonStyles.card}`}>
+                                                {campuses.map((campus) => (
+                                                    <SelectItem key={campus.id} value={String(campus.id)}>
+                                                        {campus.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.campus_id && <p className={commonStyles.error}>{errors.campus_id}</p>}
+                                    </div> */}
+
+                                    {/* Wrapper for inline layout on small screens and up */}
+                                    <div className="flex flex-col sm:flex-row sm:space-x-8">
+
+                                        {/* isVerified Input Group */}
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    id="isVerified"
+                                                    type="checkbox"
+                                                    checked={data.isVerified}
+                                                    onChange={(e) => setData("isVerified", e.target.checked)}
+                                                    className="h-4 w-4 accent-indigo-500"
+                                                    aria-label={t.isVerified}
+                                                />
+                                                <Label htmlFor="isVerified" className="text-base text-gray-900 dark:text-gray-50">
+                                                    {t.isVerified}
+                                                </Label>
+                                            </div>
+                                            {errors.isVerified && <p className={`mt-1 text-sm text-red-600 ${commonStyles.error}`}>{errors.isVerified}</p>}
+                                        </div>
+
+                                        {/* isActive Input Group */}
+                                        {/* <div className="flex flex-col mt-4 sm:mt-0">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    id="isActive"
+                                                    type="checkbox"
+                                                    checked={data.isActive}
+                                                    onChange={(e) => setData("isActive", e.target.checked)}
+                                                    className="h-4 w-4 accent-indigo-500"
+                                                    aria-label={t.isActive}
+                                                />
+                                                <Label htmlFor="isActive" className="text-base text-gray-900 dark:text-gray-50">
+                                                    {t.isActive}
+                                                </Label>
+                                            </div>
+                                            {errors.isActive && <p className={`mt-1 text-sm text-red-600 ${commonStyles.error}`}>{errors.isActive}</p>}
+                                        </div> */}
+
+                                    </div>
+                                </div>
+                            )}
                             {/* Form Actions */}
                             <div className="flex justify-end space-x-4 mt-8">
                                 <Link

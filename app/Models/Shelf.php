@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Shelf extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['code', 'campus_id', 'bookcase_id'];
+
     public $timestamps = false;
 
     // Scopes
@@ -20,12 +24,12 @@ class Shelf extends Model
     {
         return $query->with([
             'bookcase:id,code,campus_id',
-            'books' => fn($q) => $q->where('is_deleted', 0)
+            'books' => fn ($q) => $q->where('is_deleted', 0)
                 ->where('campus_id', Auth::user()->campus_id)
-                ->select('id', 'shelf_id', 'title', 'code', 'is_available', 'campus_id')
+                ->select('id', 'shelf_id', 'title', 'code', 'is_available', 'campus_id'),
         ])->withCount([
-            'books as books_count' => fn($q) => $q->where('is_deleted', 0)
-                ->where('campus_id', Auth::user()->campus_id)
+            'books as books_count' => fn ($q) => $q->where('is_deleted', 0)
+                ->where('campus_id', Auth::user()->campus_id),
         ]);
     }
 
@@ -35,6 +39,7 @@ class Shelf extends Model
         if ($campusId) {
             $query->where('campus_id', $campusId);
         }
+
         return $query;
     }
 
@@ -48,12 +53,12 @@ class Shelf extends Model
     {
         return $this->load([
             'bookcase:id,code,campus_id',
-            'books' => fn($q) => $q->where('is_deleted', 0)
+            'books' => fn ($q) => $q->where('is_deleted', 0)
                 ->where('campus_id', Auth::user()->campus_id)
-                ->select('id', 'shelf_id', 'title', 'code', 'is_available', 'campus_id')
+                ->select('id', 'shelf_id', 'title', 'code', 'is_available', 'campus_id'),
         ])->loadCount([
-            'books as books_count' => fn($q) => $q->where('is_deleted', 0)
-                ->where('campus_id', Auth::user()->campus_id)
+            'books as books_count' => fn ($q) => $q->where('is_deleted', 0)
+                ->where('campus_id', Auth::user()->campus_id),
         ]);
     }
 

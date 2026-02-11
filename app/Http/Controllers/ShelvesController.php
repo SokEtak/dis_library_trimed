@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Bookcase, Shelf};
+use App\Models\Bookcase;
+use App\Models\Shelf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use Illuminate\Http\RedirectResponse;
 
 class ShelvesController extends Controller
 {
@@ -17,6 +18,7 @@ class ShelvesController extends Controller
     {
         $shelves = Shelf::forCurrentCampusWithActiveBooks()->get();
 
+        // dd( $shelves->toArray() );
         return Inertia::render('Shelves/Index', [
             'shelves' => $shelves,
         ]);
@@ -38,7 +40,7 @@ class ShelvesController extends Controller
      */
     public function show(Shelf $shelf)
     {
-        if (!$this->belongsToUserCampus($shelf)) {
+        if (! $this->belongsToUserCampus($shelf)) {
             return abort(404, 'Not Found');
         }
 
@@ -60,7 +62,7 @@ class ShelvesController extends Controller
                 'required',
                 'exists:bookcases,id',
                 function ($attribute, $value, $fail) {
-                    if (!$this->bookcaseBelongsToUserCampus($value)) {
+                    if (! $this->bookcaseBelongsToUserCampus($value)) {
                         $fail('The selected bookcase does not belong to your campus.');
                     }
                 },
@@ -77,7 +79,7 @@ class ShelvesController extends Controller
      */
     public function edit(Shelf $shelf)
     {
-        if (!$this->belongsToUserCampus($shelf)) {
+        if (! $this->belongsToUserCampus($shelf)) {
             return abort(404, 'Not Found');
         }
 
@@ -99,7 +101,7 @@ class ShelvesController extends Controller
                 'required',
                 'exists:bookcases,id',
                 function ($attribute, $value, $fail) {
-                    if (!$this->bookcaseBelongsToUserCampus($value)) {
+                    if (! $this->bookcaseBelongsToUserCampus($value)) {
                         $fail('The selected bookcase does not belong to your campus.');
                     }
                 },
@@ -116,7 +118,7 @@ class ShelvesController extends Controller
      */
     protected function shouldRedirectIfNotStaff(): ?RedirectResponse
     {
-        return Auth::check() && !Auth::user()->hasRole('staff')
+        return Auth::check() && ! Auth::user()->hasRole('staff')
             ? redirect()->route('shelves.index')
             : null;
     }
@@ -145,6 +147,7 @@ class ShelvesController extends Controller
     protected function bookcaseBelongsToUserCampus($bookcaseId): bool
     {
         $bookcase = Bookcase::find($bookcaseId);
+
         return $bookcase && $bookcase->campus_id === Auth::user()->campus_id;
     }
 }

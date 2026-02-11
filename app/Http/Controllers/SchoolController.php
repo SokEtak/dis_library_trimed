@@ -1,5 +1,7 @@
 <?php
+
 // app/Http/Controllers/SchoolController.php
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\School\StoreSchoolRequest;
@@ -11,12 +13,13 @@ class SchoolController extends Controller
 {
     public function index()
     {
-        $schools = School::select('id','name','code','email','contact','address','website')
+        $schools = School::select('id', 'name', 'code', 'email', 'contact', 'address', 'website')
             ->orderBy('name')
             ->paginate(10);
+
         return Inertia::render('Schools/Index', [
             'schools' => $schools,
-            'flash'   => session('flash'),
+            'flash' => session('flash'),
             'isSuperLibrarian' => auth()->user()?->hasRole('super-librarian') ?? false,
             'lang' => app()->getLocale(),
         ]);

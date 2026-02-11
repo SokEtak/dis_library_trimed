@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
+                    'avatar' => $request->user()->avatar,
                     'roles' => $request->user()->getRoleNames()->toArray(), // Spatie roles
                     'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(), // Spatie permissions
                 ] : null,
@@ -55,7 +56,7 @@ class HandleInertiaRequests extends Middleware
             // ✅ Flash messages
             'flash' => [
                 'message' => fn () => $request->session()->get('flash.message'),
-                'error'   => fn () => $request->session()->get('flash.error'),
+                'error' => fn () => $request->session()->get('flash.error'),
                 'warning' => fn () => $request->session()->get('flash.warning'),
             ],
 

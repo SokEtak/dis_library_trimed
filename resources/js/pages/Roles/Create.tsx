@@ -177,7 +177,7 @@ export default function RolesCreate({
                                     </p>
                                 )}
                             </div>
-                            <div>
+                            {/* <div>
                                 <Label
                                     className="text-base text-gray-900 dark:text-gray-50"
                                 >
@@ -207,7 +207,7 @@ export default function RolesCreate({
                                         {errors.permissions}
                                     </p>
                                 )}
-                            </div>
+                            </div> */}
                             <div className="flex justify-end space-x-4 mt-8">
                                 <TooltipProvider>
                                     <Tooltip>

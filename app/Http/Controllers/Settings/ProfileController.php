@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use Cassandra\Exception\ValidationException;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +22,7 @@ class ProfileController extends Controller
         // Eager load the 'campus' and 'pms' relationships
         $user = $request->user()->load(['campus:id,name', 'role:id,name']);
         $userProps = $user->toArray();
+
         return Inertia::render('settings/profile', [
             'user' => $userProps,
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
@@ -39,12 +40,12 @@ class ProfileController extends Controller
         // Validate the request
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['required', 'string'],
         ]);
-
+        // dd();
         // Verify the password
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'password' => ['The provided password is incorrect.'],
             ]);
@@ -71,7 +72,7 @@ class ProfileController extends Controller
         $user = $request->user();
 
         Auth::logout();
-        //soft deactivate account
+        // soft deactivate account
         $user->isActive = 0;
 
         $request->session()->invalidate();

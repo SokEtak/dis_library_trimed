@@ -2,28 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Book;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class CategoryController extends Controller {
-
-    public function index() {
+class CategoryController extends Controller
+{
+    public function index()
+    {
         $categories = Category::all();
+
         return Inertia::render('Categories/Index', [
             'categories' => $categories,
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function create() {
+    public function create()
+    {
         return Inertia::render('Categories/Create', [
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function store(Request $request) {
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:categories,name',
         ]);
@@ -33,14 +36,16 @@ class CategoryController extends Controller {
         return redirect()->route('categories.index')->with('message', 'Category created successfully.');
     }
 
-    public function edit(Category $category) {
+    public function edit(Category $category)
+    {
         return Inertia::render('Categories/Edit', [
             'category' => $category,
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function update(Request $request, Category $category) {
+    public function update(Request $request, Category $category)
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -50,16 +55,18 @@ class CategoryController extends Controller {
         return redirect()->route('categories.index')->with('message', 'Category updated successfully.');
     }
 
-    public function show(Category $category) {
+    public function show(Category $category)
+    {
         return Inertia::render('Categories/Show', [
             'category' => $category,
             'flash' => ['message' => session('message')],
         ]);
     }
 
-    public function destroy(Category $category) {
+    public function destroy(Category $category)
+    {
         // Optional: Check for related books to prevent deletion if referenced
-        //for safety delete
+        // for safety delete
         if ($category->books()->exists()) {
             return redirect()->route('categories.index')->with('message', 'Cannot delete category because it is referenced by books.');
         }

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class Book extends Model
 {
+    use HasFactory;
+
     protected $guarded = [];
 
     // Include relationships in queries by default
@@ -51,7 +54,7 @@ class Book extends Model
         'campus_id',
         'is_deleted',
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 
     // Casts for specific fields
@@ -62,7 +65,7 @@ class Book extends Model
         'downloadable' => 'integer',
     ];
 
-    //used by bookcase
+    // used by bookcase
     public function scopePhysicalAndActiveForCampus($query)
     {
         return $query->where([
@@ -71,8 +74,9 @@ class Book extends Model
             'campus_id' => Auth::user()->campus_id,
         ]);
     }
+
     // Scope for active base on pms , campus , book type-used by ebook(global,local and admin)
-    public function scopeActive($query, $book_type, $scope = "local")
+    public function scopeActive($query, $book_type, $scope = 'local')
     {
         $conditions = [];
         $conditions['is_deleted'] = 0;
@@ -81,7 +85,7 @@ class Book extends Model
         if (Auth::user()->hasAnyRole(['regular-user']) && $scope == 'local') {
             $conditions['campus_id'] = Auth::user()->campus_id;
         }
-        //global no need to filter
+        // global no need to filter
 
         if (Auth::user()->hasAnyRole(['staff'])) {
             if ($scope == 'local') {
@@ -92,7 +96,7 @@ class Book extends Model
 
         // Filter book type (missing, deleted, physical, e-book)
         if ($book_type !== null) {
-            if ($book_type === 'delBook') {
+            if ($book_type === 'del') {
                 $conditions['is_deleted'] = 1; // For deleted books
             } elseif ($book_type === 'miss') {
                 $conditions['is_available'] = 0; // For missing books (not found at bookcase/shelf)
@@ -116,8 +120,8 @@ class Book extends Model
             })
             ->where('id', '!=', $book->id)
             ->where('is_deleted', false)
-            ->inRandomOrder()
-            ->take(10)
+                    ->inRandomOrder()
+                    ->take(20)
             ->with(['user', 'category', 'subcategory', 'shelf', 'subject', 'grade'])
             ->get()
             ->map(function ($relatedBook) {
@@ -139,7 +143,8 @@ class Book extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function bookcase(){
+    public function bookcase()
+    {
         return $this->belongsTo(Bookcase::class);
     }
 
@@ -170,6 +175,6 @@ class Book extends Model
 
     public function campus()
     {
-        return $this->belongsTo(Campus::class, 'campus_id');;
+        return $this->belongsTo(Campus::class, 'campus_id');
     }
 }

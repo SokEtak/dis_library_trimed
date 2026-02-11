@@ -2,23 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\Book;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class LibraryController extends Controller
 {
     /**
      * Build a paginated book query with filters and sorting.
      *
-     * @param Request $request
-     * @param string $type
-     * @param string $scope
-     * @param int $perPage
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    private function buildBookQuery(Request $request, string $type, string $scope, int $perPage = 40)
+    private function buildBookQuery(Request $request, string $type, string $scope, int $perPage = 42)
     {
         $query = Book::active($type, $scope);
 

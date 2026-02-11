@@ -2,7 +2,7 @@ import { Translations } from "@/utils/translations/bookloan/translationsTypes";
 
 const translations: Translations = {
     kh: {
-        title: "បង្កើតការខ្ចីសៀវភៅ",
+        title: "កម្ចីសៀវភៅ",
         returnDate: "កាលបរិច្ឆេទត្រឡប់",
         returnDateTooltip: "ជ្រើសរើសកាលបរិច្ឆេទត្រឡប់សម្រាប់ការខ្ចីសៀវភៅ",
         book: "សៀវភៅ",

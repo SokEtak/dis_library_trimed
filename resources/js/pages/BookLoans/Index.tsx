@@ -71,6 +71,7 @@ interface Book {
 interface BookLoan {
     id: number;
     return_date: string | null;
+    returned_at: string | null;
     book_id: number;
     user_id: number;
     created_at: string;
@@ -246,8 +247,8 @@ const getColumns = (
             >
                 {t.returnDate}
                 {{
-                    asc: <ArrowUp className="ml-2 h-4 w-4" />,
-                    desc: <ArrowDown className="ml-2 h-4 w-4" />,
+                    asc: <ArrowUp className="ml-2 h-4 w-4" />, 
+                    desc: <ArrowDown className="ml-2 h-4 w-4" />, 
                 }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4" />}
             </Button>
         ),
@@ -386,6 +387,37 @@ const getColumns = (
             (row.original.user?.name || t.none).toLowerCase().includes(String(value).toLowerCase()),
         sortingFn: (rowA, rowB) =>
             (rowA.original.user?.name || t.none).localeCompare(rowB.original.user?.name || t.none),
+    },
+    {
+        accessorKey: "returned_at",
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                className={`${commonStyles.button} text-indigo-600 dark:text-indigo-300`}
+            >
+                {t.returned_at}
+                {{
+                    asc: <ArrowUp className="ml-2 h-4 w-4" />, 
+                    desc: <ArrowDown className="ml-2 h-4 w-4" />, 
+                }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4" />}
+            </Button>
+        ),
+        cell: ({ row }) => (
+            <button
+                className={`${commonStyles.text} px-3 cursor-pointer`}
+                onClick={() => {
+                    setRowModalOpen(true);
+                    setSelectedRow(row.original);
+                }}
+                role="button"
+                aria-label={`View details for book loan with returned at ${row.getValue("returned_at") || t.none}`}
+            >
+                {row.getValue("returned_at") || t.none}
+            </button>
+        ),
+        filterFn: (row, id, value) =>
+            String(row.getValue(id) || t.none).toLowerCase().includes(String(value).toLowerCase()),
     },
     {
         accessorKey: "status",
@@ -608,6 +640,10 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
                 {item.return_date || t.none}
             </p>
             <p>
+                <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.returnedAt || "Returned At"}:</strong>{" "}
+                {item.returned_at || t.none}
+            </p>
+            <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.createdAt}:</strong>{" "}
                 {new Date(item.created_at).toLocaleString()}
             </p>
@@ -637,6 +673,9 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
             </p>
             <p>
                 <strong className="text-indigo-200">{t.returnDate}:</strong> {item.return_date || t.none}
+            </p>
+            <p>
+                <strong className="text-indigo-200">{t.returnedAt || "Returned At"}:</strong> {item.returned_at || t.none}
             </p>
             <p>
                 <strong className="text-indigo-200">{t.createdAt}:</strong>{" "}
@@ -677,7 +716,7 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
                 columns={columns}
                 breadcrumbs={breadcrumbs}
                 title={t.title}
-                resourceName={translations.en.title.toLowerCase()}
+                resourceName={t.title}
                 routes={{
                     index: route("bookloans.index"),
                     create: route("bookloans.create"),

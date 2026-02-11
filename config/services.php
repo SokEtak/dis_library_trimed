@@ -52,5 +52,4 @@ return [
         'redirect' => env('GITHUB_REDIRECT_URL'),
     ],
 
-
 ];

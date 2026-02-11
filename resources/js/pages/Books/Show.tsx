@@ -1,7 +1,9 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState } from 'react';
 import { Copy, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
 
@@ -120,220 +122,96 @@ export default function BooksShow({ book }: BooksShowProps) {
                             />
                         </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[
-                            { label: 'ID', value: book.id.toString(), field: 'id', copyable: true },
-                            { label: 'Title', value: book.title, field: 'title', copyable: true },
-                            { label: 'Description', value: book.description || 'N/A', field: 'description', copyable: true },
-                            { label: 'Page Count', value: book.page_count ? `${book.page_count} pages` : 'N/A', field: 'page_count' },
-                            { label: 'Publisher', value: book.publisher || 'N/A', field: 'publisher' },
-                            {
-                                label: 'Language',
-                                value: book.language === 'en'
-                                    ? 'English'
-                                    : book.language === 'kh'
-                                        ? 'Khmer'
-                                        : 'N/A',
-                                field: 'language'
-                            },
-                            {
-                                label: 'Program',
-                                value: book.program || 'N/A',
-                                field: 'program',
-                            },
-                            {
-                                label: 'Published At',
-                                value: book.published_at
-                                    ? new Date(book.published_at).toLocaleString('en-US', {
-                                        timeZone: 'Asia/Bangkok',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })
-                                    : 'N/A',
-                                field: 'published_at',
-                            },
-                            { label: 'Author', value: book.author || 'N/A', field: 'author' },
-                            {
-                                label: 'Book Type',
-                                value: book.type ? book.type.charAt(0).toUpperCase() + book.type.slice(1) : 'N/A',
-                                field: 'type'
-                            },
-                            {
-                                label: 'Downloadable',
-                                value: book.downloadable ? 'Yes' : 'No',
-                                field: 'downloadable',
-                                className: book.downloadable ? 'text-green-500' : 'text-red-500',
-                            },
-                            {
-                                label: 'Posted At',
-                                value: book.created_at
-                                    ? new Date(book.created_at).toLocaleString('en-US', {
-                                        timeZone: 'Asia/Bangkok',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                        hour: 'numeric',
-                                        minute: 'numeric',
-                                        hour12: true,
-                                    })
-                                    : 'N/A',
-                                field: 'created_at',
-                            },
-                            {
-                                label: 'Last Modified',
-                                value: book.updated_at
-                                    ? new Date(book.updated_at).toLocaleString('en-US', {
-                                        timeZone: 'Asia/Bangkok',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })
-                                    : 'N/A',
-                                field: 'updated_at',
-                            },
-                            {
-                                label: 'Flip Link',
-                                value: book.flip_link || 'N/A',
-                                field: 'flip_link',
-                                copyable: true,
-                                render: () =>
-                                    book.flip_link ? (
-                                        <a
-                                            href={book.flip_link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.flip_link}
-                                        </a>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            { label: 'Code', value: book.code, field: 'code', copyable: true },
-                            { label: 'ISBN', value: book.isbn, field: 'isbn', copyable: true },
-                            { label: 'Views', value: book.view.toString(), field: 'view' },
-                            {
-                                label: 'Availability',
-                                value: book.is_available ? 'Yes' : 'No',
-                                field: 'is_available',
-                                className: book.is_available ? 'text-green-500' : 'text-red-500',
-                            },
-                            {
-                                label: 'Posted By',
-                                value: book.user?.name || 'N/A',
-                                field: 'user',
-                                render: () =>
-                                    book.user_id ? (
-                                        <Link
-                                            href={""}
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.user?.name || 'N/A'}
-                                        </Link>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            {
-                                label: 'Category',
-                                value: book.category?.name || 'N/A',
-                                field: 'category',
-                                render: () =>
-                                    book.category_id ? (
-                                        <Link
-                                            href={route('categories.show', book.category_id)}
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.category?.name || 'N/A'}
-                                        </Link>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            {
-                                label: 'Subcategory',
-                                value: book.subcategory?.name || 'N/A',
-                                field: 'subcategory',
-                                render: () =>
-                                    book.subcategory_id ? (
-                                        <Link
-                                            href={route('subcategory.show', book.subcategory_id)}
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.subcategory?.name || 'N/A'}
-                                        </Link>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            {
-                                label: 'Bookcase',
-                                value: book.bookcase?.code || 'N/A',
-                                field: 'bookcase',
-                                render: () =>
-                                    book.bookcase_id ? (
-                                        <Link
-                                            href={route('bookcases.show', book.bookcase_id)}
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.bookcase?.code || 'N/A'}
-                                        </Link>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            {
-                                label: 'Shelf',
-                                value: book.shelf?.code || 'N/A',
-                                field: 'shelf',
-                                render: () =>
-                                    book.shelf_id ? (
-                                        <Link
-                                            href={route('shelves.show', book.shelf_id)}
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            {book.shelf?.code || 'N/A'}
-                                        </Link>
-                                    ) : (
-                                        'N/A'
-                                    ),
-                            },
-                            { label: 'Grade', value: book.grade?.name || 'N/A', field: 'grade' },
-                            { label: 'Subject', value: book.subject?.name || 'N/A', field: 'subject' },
-                        ].map(({ label, value, field, className, render, copyable }) => (
-                            <div
-                                key={field}
-                                className="relative group bg-gray-200 dark:bg-gray-700 rounded-xl p-4 transform transition-all duration-300 hover:scale-105 translate-2 hover:shadow-lg"
-                            >
-                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">{label}</label>
-                                <div className="flex items-center mt-2">
-                                    <p className={`flex-1 text-gray-900 dark:text-gray-100 ${className || ''}`}>
-                                        {render ? render() : value}
-                                    </p>
-                                    {copyable && (
-                                        <button
-                                            onClick={() => copyToClipboard(value, field)}
-                                            className="ml-2 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
-                                            title="Copy to clipboard"
-                                        >
-                                            {copiedField === field ? (
-                                                <Check className="w-5 h-5 text-green-500" />
-                                            ) : (
-                                                <Copy className="w-5 h-5" />
+                    <Tabs defaultValue="general" className="w-full">
+                        <TabsList className="mb-6">
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="location">Location</TabsTrigger>
+                            <TabsTrigger value="metadata">Metadata</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="general">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                {/* General Info */}
+                                {[
+                                    { label: 'អត្តសញ្ញាណ', value: book.id.toString(), field: 'id', copyable: true },
+                                    { label: 'ចំណងជើង', value: book.title, field: 'title', copyable: true },
+                                    { label: 'សេចក្ដីពិពណ៌នា', value: book.description || 'មិនមាន', field: 'description', copyable: true },
+                                    { label: 'ចំនួនទំព័រ', value: book.page_count ? `${book.page_count} ទំព័រ` : 'មិនមាន', field: 'page_count' },
+                                    { label: 'អ្នកបោះពុម្ពផ្សាយ', value: book.publisher || 'មិនមាន', field: 'publisher' },
+                                    { label: 'ភាសា', value: book.language === 'en' ? 'អង់គ្លេស' : book.language === 'kh' ? 'ខ្មែរ' : 'មិនមាន', field: 'language' },
+                                    { label: 'កម្មវិធី', value: book.program || 'មិនមាន', field: 'program' },
+                                    { label: 'ថ្ងៃបោះពុម្ព', value: book.published_at ? new Date(book.published_at).toLocaleString('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'long', day: 'numeric' }) : 'មិនមាន', field: 'published_at' },
+                                    { label: 'អ្នកនិពន្ធ', value: book.author || 'មិនមាន', field: 'author' },
+                                    { label: 'ប្រភេទសៀវភៅ', value: book.type ? book.type.charAt(0).toUpperCase() + book.type.slice(1) : 'មិនមាន', field: 'type' },
+                                    { label: 'អាចទាញយកបាន', value: book.downloadable ? 'បាទ/ចាស' : 'ទេ', field: 'downloadable', className: book.downloadable ? 'text-green-500' : 'text-red-500' },
+                                ].map(({ label, value, field, className, copyable }) => (
+                                    <div key={field} className="relative group bg-gray-200 dark:bg-gray-700 rounded-xl p-4">
+                                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">{label}</label>
+                                        <div className="flex items-center mt-2">
+                                            <p className={`flex-1 text-gray-900 dark:text-gray-100 ${className || ''}`}>{value}</p>
+                                            {copyable && (
+                                                <button onClick={() => copyToClipboard(value, field)} className="ml-2 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200" title="Copy to clipboard">
+                                                    {copiedField === field ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                                                </button>
                                             )}
-                                        </button>
-                                    )}
-                                </div>
-                                {copiedField === field && (
-                                    <span className="absolute top-0 right-0 mt-12 mr-2 text-xs text-green-500 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded-md shadow">
-                                        Copied!
-                                    </span>
-                                )}
+                                        </div>
+                                        {copiedField === field && (
+                                            <span className="absolute top-0 right-0 mt-12 mr-2 text-xs text-green-500 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded-md shadow">Copied!</span>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        </TabsContent>
+                        <TabsContent value="location">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                {/* Location Info */}
+                                {[
+                                    { label: 'ទូ', value: book.bookcase?.code || 'មិនមាន', field: 'bookcase' },
+                                    { label: 'ធ្នើ', value: book.shelf?.code || 'មិនមាន', field: 'shelf' },
+                                    { label: 'ថ្នាក់', value: book.grade?.name || 'មិនមាន', field: 'grade' },
+                                    { label: 'មុខវិជ្ជា', value: book.subject?.name || 'មិនមាន', field: 'subject' },
+                                    { label: 'ប្រភេទ', value: book.category?.name || 'មិនមាន', field: 'category' },
+                                    { label: 'ប្រភេទរង', value: book.subcategory?.name || 'មិនមាន', field: 'subcategory' },
+                                ].map(({ label, value, field }) => (
+                                    <div key={field} className="group bg-gray-200 dark:bg-gray-700 rounded-xl p-4">
+                                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">{label}</label>
+                                        <div className="flex items-center mt-2">
+                                            <p className="flex-1 text-gray-900 dark:text-gray-100">{value}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="metadata">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                {/* Metadata Info */}
+                                {[
+                                    { label: 'កូដ', value: book.code, field: 'code', copyable: true },
+                                    { label: 'លេខសៀវភៅ (ISBN)', value: book.isbn, field: 'isbn', copyable: true },
+                                    { label: 'ចំនួនមើល', value: book.view.toString(), field: 'view' },
+                                    { label: 'ភាពអាចរកបាន', value: book.is_available ? 'បាទ/ចាស' : 'ទេ', field: 'is_available', className: book.is_available ? 'text-green-500' : 'text-red-500' },
+                                    { label: 'បង្ហោះដោយ', value: book.user?.name || 'មិនមាន', field: 'user' },
+                                    { label: 'ថ្ងៃបង្ហោះ', value: book.created_at ? new Date(book.created_at).toLocaleString('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }) : 'មិនមាន', field: 'created_at' },
+                                    { label: 'កែចុងក្រោយ', value: book.updated_at ? new Date(book.updated_at).toLocaleString('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'long', day: 'numeric' }) : 'មិនមាន', field: 'updated_at' },
+                                    { label: 'តំណភ្ជាប់ Flip', value: book.flip_link || 'មិនមាន', field: 'flip_link', copyable: true },
+                                ].map(({ label, value, field, className, copyable }) => (
+                                    <div key={field} className="relative group bg-gray-200 dark:bg-gray-700 rounded-xl p-4">
+                                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">{label}</label>
+                                        <div className="flex items-center mt-2">
+                                            <p className={`flex-1 text-gray-900 dark:text-gray-100 ${className || ''}`}>{value}</p>
+                                            {copyable && (
+                                                <button onClick={() => copyToClipboard(value, field)} className="ml-2 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200" title="Copy to clipboard">
+                                                    {copiedField === field ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {copiedField === field && (
+                                            <span className="absolute top-0 right-0 mt-12 mr-2 text-xs text-green-500 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded-md shadow">Copied!</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                     <div className="mt-12 flex gap-4 justify-center">
                         <Link href={route('books.index')}>
                             <Button className="border-2  px-8 py-3 rounded-lg font-semibold cursor-pointer">
@@ -352,8 +230,9 @@ export default function BooksShow({ book }: BooksShowProps) {
                         >
                             <X className="w-6 h-6" />
                         </button>
+                        {/* console.log(book.cover) */}
                         <img
-                            src={`/storage/${book.cover}`}
+                            src={book.cover}
                             alt="Book Cover Large"
                             className="w-full max-h-[80vh] object-contain rounded-lg"
                         />

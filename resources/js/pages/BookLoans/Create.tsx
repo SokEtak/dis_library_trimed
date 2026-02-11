@@ -65,6 +65,7 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
     const t = translations[lang];
     const initialFormData = {
         return_date: "",
+        returned_at: "",
         book_id: "none",
         user_id: "none",
         status: "none",

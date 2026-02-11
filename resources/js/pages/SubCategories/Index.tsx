@@ -356,7 +356,7 @@ export default function SubcategoriesIndex({ subcategories = [], flash, isSuperL
             columns={columns}
             breadcrumbs={breadcrumbs}
             title={t.indexTitle}
-            resourceName="subcategories"
+            resourceName={t.indexTitle}
             routes={{
                 index: route("subcategories.index"),
                 create: route("subcategories.create"),

@@ -3,6 +3,7 @@ interface Translations {
         title: string;
         id: string;
         returnDate: string;
+        returned_at: string;
         book: string;
         loaner: string;
         status: string;
@@ -32,6 +33,7 @@ interface Translations {
         title: string;
         id: string;
         returnDate: string;
+        returned_at: string;
         book: string;
         loaner: string;
         status: string;
@@ -64,8 +66,9 @@ const translations: Translations = {
         title: "កម្ចីសៀវភៅ",
         id: "លេខរៀង",
         returnDate: "ថ្ងៃសងសៀវភៅ",
+        returned_at: "បានសងនៅថ្ថៃ",
         book: "ចំណងជើងសៀវភៅ",
-        loaner: "អ្នកខ្ចី",
+        loaner: "ម្ចាស់កម្ចី",
         status: "ស្ថានភាព",
         statusProcessing: "កំពុងដំណើរការ",
         statusReturned: "បានត្រឡប់",
@@ -86,7 +89,7 @@ const translations: Translations = {
             `សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។ វានឹងលុបកម្ចីសៀវភៅ${bookTitle ? ` សម្រាប់ "${bookTitle}"` : ""}${userName ? ` ខ្ចីដោយ ${userName}` : ""} ជាអចិន្ត្រៃយ៍។`,
         cancel: "បោះបង់",
         confirmDelete: "លុប",
-        none: "គ្មាន",
+        none: "មិនទាន់បានសង",
         statusPlaceholder: "ជ្រើសរើសស្ថានភាព",
         statusEmpty: "រកមិនឃើញស្ថានភាព",
     },
@@ -94,6 +97,7 @@ const translations: Translations = {
         title: "Book Loans",
         id: "ID",
         returnDate: "Return Date",
+        returned_at: "Returned At",
         book: "Book Title",
         loaner: "Loaner",
         status: "Status",

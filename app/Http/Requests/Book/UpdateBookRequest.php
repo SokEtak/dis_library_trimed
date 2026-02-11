@@ -20,7 +20,7 @@ class UpdateBookRequest extends FormRequest
         $book = $this->route('book');
         $type = $this->input('type', $book->type ?? 'physical'); // Fallback to book's type
 
-        if ($type === 'physical' && !$campusId) {
+        if ($type === 'physical' && ! $campusId) {
             throw ValidationException::withMessages([
                 'campus_id' => 'User must have a valid campus ID for physical books.',
             ]);
@@ -32,7 +32,7 @@ class UpdateBookRequest extends FormRequest
             'user_id' => $this->input('user_id', Auth::id()),
         ]);
 
-        if ($this->has('published_at') && !empty($this->published_at)) {
+        if ($this->has('published_at') && ! empty($this->published_at)) {
             $this->merge(['published_at' => (int) $this->published_at]);
         }
 

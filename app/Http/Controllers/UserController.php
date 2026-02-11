@@ -6,11 +6,11 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\Campus;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -33,7 +33,7 @@ class UserController extends Controller
                     'isActive' => $user->isActive,
                 ];
             });
-//        dd($users->toArray());
+
         return Inertia::render('Users/Index', [
             'users' => $users,
             'roles' => Role::all()->pluck('name')->toArray(),
@@ -51,7 +51,7 @@ class UserController extends Controller
             ->orWhere('name', $identifier)
             ->firstOrFail();
 
-        if (!$user->isActive) {
+        if (! $user->isActive) {
             abort(404);
         }
 
@@ -75,7 +75,6 @@ class UserController extends Controller
             'lang' => app()->getLocale(),
         ]);
     }
-
 
     public function create()
     {
@@ -106,13 +105,12 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
-
+        $validated['campus_id'] = auth()->user()->campus_id; // Set campus_id to the creator's campus_id
         // Handle avatar upload
-        $avatarPath = null;
         if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $avatarPath = asset(Storage::url($path)); // includes current domain
         }
-
         // Create user
         $user = User::create([
             'name' => $validated['name'],
@@ -126,7 +124,7 @@ class UserController extends Controller
 
         // Assign roles and permissions
         $user->syncRoles($validated['roles']);
-        $user->syncPermissions($validated['permissions']);
+        // $user->syncPermissions($validated['permissions']);
 
         return redirect()->route('users.index')->with('flash', [
             'message' => 'User created successfully.',
@@ -136,7 +134,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        if (!$user->isActive) {
+        if (! $user->isActive) {
             abort(404);
         }
 
@@ -181,7 +179,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user)
     {
 
-        if (!$user->isActive) {
+        if (! $user->isActive) {
             abort(404);
         }
 
@@ -196,7 +194,7 @@ class UserController extends Controller
         ];
 
         // Handle password update (only if a new password is provided)
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
@@ -223,6 +221,7 @@ class UserController extends Controller
         // Sync roles and permissions
         $user->syncRoles($validated['roles'] ?? []);
         $user->syncPermissions($validated['permissions'] ?? []);
+
         return redirect()->route('users.index')->with('flash', [
             'message' => 'User updated successfully.',
             'type' => 'success',
