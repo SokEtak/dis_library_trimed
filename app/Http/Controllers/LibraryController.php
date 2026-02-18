@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\BookLoanRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -161,6 +162,23 @@ class LibraryController extends Controller
     {
         // Fetch related books logic
         $relatedBooks = Book::relatedBooks($book);
+        $authUser = Auth::user();
+        $canRequestLoan = (bool) ($authUser?->hasRole('regular-user'));
+
+        $loanRequest = null;
+        if ($authUser && $canRequestLoan) {
+            $latestRequest = BookLoanRequest::query()
+                ->where('book_id', $book->id)
+                ->where('requester_id', $authUser->id)
+                ->latest('id')
+                ->first();
+
+            $loanRequest = $latestRequest ? [
+                'id' => $latestRequest->id,
+                'status' => $latestRequest->status,
+                'decided_at' => optional($latestRequest->decided_at)->toIso8601String(),
+            ] : null;
+        }
 
         // Increment view count if the user is not the book's owner
         if ($book->user_id !== Auth::id()) {
@@ -170,13 +188,16 @@ class LibraryController extends Controller
         return Inertia::render('Client/Library/Show', [
             'book' => $book->load('user', 'category', 'subcategory', 'shelf', 'subject', 'grade', 'bookcase', 'campus')->toArray(),
             'lang' => app()->getLocale(),
-            'authUser' => Auth::user() ? [
-                'name' => Auth::user()->name,
-                'email' => Auth::user()->email,
-                'avatar' => Auth::user()->avatar ?? null,
-                'isVerified' => Auth::user()->isVerified ?? false,
+            'authUser' => $authUser ? [
+                'id' => $authUser->id,
+                'name' => $authUser->name,
+                'email' => $authUser->email,
+                'avatar' => $authUser->avatar ?? null,
+                'isVerified' => $authUser->isVerified ?? false,
             ] : null,
             'relatedBooks' => $relatedBooks,
+            'canRequestLoan' => $canRequestLoan,
+            'loanRequest' => $loanRequest,
         ]);
     }
 }

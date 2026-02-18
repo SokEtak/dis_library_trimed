@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Link, useForm } from "@inertiajs/react";
+import Toast from "@/components/Toast";
+import { Link, router, useForm } from "@inertiajs/react";
+import echo from "@/lib/echo";
 import {
     EyeIcon,
     PencilIcon,
@@ -81,10 +83,21 @@ interface BookLoan {
     user: User | null;
 }
 
+interface LoanRequest {
+    id: number;
+    book_id: number;
+    book_title: string | null;
+    requester_id: number;
+    requester_name: string | null;
+    status: "pending" | "approved" | "rejected";
+    created_at: string | null;
+}
+
 interface BookLoansProps {
     bookloans?: BookLoan[] | null;
-    books: Book[];
-    users: User[];
+    loanRequests?: LoanRequest[] | null;
+    books?: Book[];
+    users?: User[];
     flash?: {
         message?: string | null;
         type?: "success" | "error";
@@ -575,18 +588,112 @@ const getColumns = (
     },
 ];
 
-export default function BookLoans({ bookloans = [], flash, books, users, lang = "kh" }: BookLoansProps) {
+export default function BookLoans({ bookloans = [], loanRequests = [], flash, lang = "kh" }: BookLoansProps) {
     const t = translations[lang];
     const { processing, delete: destroy } = useForm();
     const [bookLoanToDelete, setBookLoanToDelete] = useState<BookLoan | null>(null);
-    const [rowModalOpen, setRowModalOpen] = useState(false);
-    const [selectedRow, setSelectedRow] = useState<BookLoan | null>(null);
+    const [, setRowModalOpen] = useState(false);
+    const [, setSelectedRow] = useState<BookLoan | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [bookLoanRows, setBookLoanRows] = useState<BookLoan[]>(bookloans || []);
+    const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(loanRequests || []);
+    const [activeLoanRequest, setActiveLoanRequest] = useState<LoanRequest | null>(loanRequests?.[0] ?? null);
+    const [decisionProcessing, setDecisionProcessing] = useState(false);
+    const [toast, setToast] = useState<{ show: boolean; message: string; type?: "success" | "error" | "info" }>({ show: false, message: "" });
+    const lastLocallyDecidedRequestIdRef = useRef<number | null>(null);
 
     const columns = useMemo(
         () => getColumns(t, processing, setBookLoanToDelete, setRowModalOpen, setSelectedRow, setDeleteDialogOpen),
         [t, processing]
     );
+
+    useEffect(() => {
+        setBookLoanRows(bookloans || []);
+    }, [bookloans]);
+
+    useEffect(() => {
+        setPendingLoanRequests(loanRequests || []);
+    }, [loanRequests]);
+
+    useEffect(() => {
+        if (!activeLoanRequest && pendingLoanRequests.length > 0) {
+            setActiveLoanRequest(pendingLoanRequests[0]);
+        }
+    }, [pendingLoanRequests, activeLoanRequest]);
+
+    useEffect(() => {
+        const echoInstance = echo;
+        if (!echoInstance) {
+            return;
+        }
+
+        const adminChannelName = "admin.book-loan-requests";
+        const channel = echoInstance.private(adminChannelName);
+
+        const handleCreatedEvent = (event: { loanRequest?: LoanRequest }) => {
+            if (!event.loanRequest) {
+                return;
+            }
+
+            setPendingLoanRequests((currentRequests) => {
+                if (currentRequests.some((requestItem) => requestItem.id === event.loanRequest?.id)) {
+                    return currentRequests;
+                }
+
+                return [event.loanRequest as LoanRequest, ...currentRequests];
+            });
+        };
+
+        const handleUpdatedEvent = (event: { loanRequest?: LoanRequest }) => {
+            if (!event.loanRequest?.id) {
+                return;
+            }
+
+            if (lastLocallyDecidedRequestIdRef.current === event.loanRequest.id) {
+                lastLocallyDecidedRequestIdRef.current = null;
+            } else if (event.loanRequest.status === "approved") {
+                setToast({
+                    show: true,
+                    message: `${event.loanRequest.requester_name || "User"} request approved.`,
+                    type: "success",
+                });
+            } else if (event.loanRequest.status === "rejected") {
+                setToast({
+                    show: true,
+                    message: `${event.loanRequest.requester_name || "User"} request rejected.`,
+                    type: "error",
+                });
+            }
+
+            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== event.loanRequest?.id));
+            setActiveLoanRequest((currentRequest) => (currentRequest?.id === event.loanRequest?.id ? null : currentRequest));
+        };
+
+        channel.listen(".book-loan-request.created", handleCreatedEvent);
+        channel.listen(".book-loan-request.updated", handleUpdatedEvent);
+
+        return () => {
+            channel.stopListening(".book-loan-request.created");
+            channel.stopListening(".book-loan-request.updated");
+            echoInstance.leave(adminChannelName);
+        };
+    }, []);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            if (decisionProcessing || processing) {
+                return;
+            }
+
+            router.reload({
+                only: ["bookloans", "loanRequests"],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 1500);
+
+        return () => window.clearInterval(intervalId);
+    }, [decisionProcessing, processing]);
 
     const globalFilterFn = (row: Row<BookLoan>, columnId: string, filterValue: string) => {
         const search = String(filterValue).toLowerCase().trim();
@@ -705,14 +812,76 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
         }
     };
 
+    const handleLoanRequestDecision = async (decision: "approved" | "rejected") => {
+        if (!activeLoanRequest || decisionProcessing) {
+            return;
+        }
+
+        lastLocallyDecidedRequestIdRef.current = activeLoanRequest.id;
+        setDecisionProcessing(true);
+
+        try {
+            const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") ?? "";
+
+            const response = await fetch(route("bookloans.requests.decide", activeLoanRequest.id), {
+                method: "PATCH",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                    ...(echo?.socketId() ? { "X-Socket-Id": echo.socketId() as string } : {}),
+                },
+                body: JSON.stringify({ decision }),
+            });
+
+            const data = (await response.json()) as {
+                message?: string;
+                bookLoan?: BookLoan | null;
+            };
+
+            if (!response.ok) {
+                throw new Error(data.message || "Unable to update the request.");
+            }
+
+            if (data.bookLoan) {
+                setBookLoanRows((currentLoans) => {
+                    if (currentLoans.some((bookLoan) => bookLoan.id === data.bookLoan?.id)) {
+                        return currentLoans;
+                    }
+
+                    return [data.bookLoan as BookLoan, ...currentLoans];
+                });
+            }
+
+            setToast({
+                show: true,
+                message: data.message || (decision === "approved" ? "Request approved." : "Request rejected."),
+                type: decision === "approved" ? "success" : "error",
+            });
+
+            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== activeLoanRequest.id));
+            setActiveLoanRequest(null);
+        } catch (error) {
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : "Unable to update the request.",
+                type: "error",
+            });
+        } finally {
+            setDecisionProcessing(false);
+        }
+    };
+
     const breadcrumbs = [
         { title: t.title, href: route("bookloans.index") },
     ];
 
     return (
         <>
+            <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
             <DataTable
-                data={bookloans || []}
+                data={bookLoanRows || []}
                 columns={columns}
                 breadcrumbs={breadcrumbs}
                 title={t.title}
@@ -732,6 +901,34 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
                 isSuperLibrarian={false}
                 globalFilterFn={globalFilterFn}
             />
+            <AlertDialog open={!!activeLoanRequest} onOpenChange={() => {}}>
+                <AlertDialogContent className={commonStyles.gradientBg}>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Borrow Request</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {activeLoanRequest
+                                ? `${activeLoanRequest.requester_name || "A user"} request to borrow ${activeLoanRequest.book_title || "this book"}.`
+                                : ""}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className={`${commonStyles.outlineButton} border`}
+                            onClick={() => handleLoanRequestDecision("rejected")}
+                            disabled={decisionProcessing}
+                        >
+                            No
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className={commonStyles.indigoButton}
+                            onClick={() => handleLoanRequestDecision("approved")}
+                            disabled={decisionProcessing}
+                        >
+                            Yes
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent className={commonStyles.gradientBg}>
                     <AlertDialogHeader>

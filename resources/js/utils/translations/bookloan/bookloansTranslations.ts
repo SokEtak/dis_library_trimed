@@ -84,7 +84,7 @@ const translations: Translations = {
         deleteTooltip: "លុបកម្ចីសៀវភៅ",
         bookLinkTooltip: (id: number) => `រុករកទៅ /books/${id}`,
         userLinkTooltip: (id: number) => `រុករកទៅ /users/${id}`,
-        deleteDialogTitle: "តើអ្នកប្រាកដទេថាចង់លុបកម្ចីស៖ាវភៅនេះ?",
+        deleteDialogTitle: "តើអ្នកប្រាកដទេថាចង់លុបកម្ចីសៀវភៅនេះ?",
         deleteDialogDescription: (bookTitle: string, userName: string) =>
             `សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។ វានឹងលុបកម្ចីសៀវភៅ${bookTitle ? ` សម្រាប់ "${bookTitle}"` : ""}${userName ? ` ខ្ចីដោយ ${userName}` : ""} ជាអចិន្ត្រៃយ៍។`,
         cancel: "បោះបង់",

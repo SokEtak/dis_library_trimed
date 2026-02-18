@@ -1,6 +1,7 @@
 import Skeleton from '@/components/Skeleton';
 import Toast from '@/components/Toast';
 import TopBar from '@/components/TopBar';
+import echo from '@/lib/echo';
 import { translations } from '@/utils/translations/library/translations';
 import { Head, Link, router } from '@inertiajs/react';
 import { BookOpen, Clipboard, Download, Eye, Facebook, Info, List, Verified } from 'lucide-react';
@@ -59,10 +60,17 @@ interface Book {
 }
 
 interface AuthUser {
+    id: number;
     name: string;
     email: string;
     avatar?: string;
     isVerified?: boolean;
+}
+
+interface LoanRequest {
+    id: number;
+    status: 'pending' | 'approved' | 'rejected';
+    decided_at?: string | null;
 }
 
 interface ShowProps {
@@ -70,6 +78,8 @@ interface ShowProps {
     lang?: 'en' | 'kh';
     authUser?: AuthUser | null;
     relatedBooks?: Book[];
+    canRequestLoan?: boolean;
+    loanRequest?: LoanRequest | null;
 }
 
 // --- Utility ---
@@ -95,7 +105,7 @@ const DetailItem = ({ label, value, index }: { label: string; value: string | nu
     );
 };
 
-export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }: ShowProps) {
+export default function Show({ book, lang = 'en', authUser, relatedBooks = [], canRequestLoan = false, loanRequest = null }: ShowProps) {
     const [language, setLanguage] = useState<'en' | 'kh'>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('language');
@@ -108,7 +118,10 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({ show: false, message: '' });
     const [loading, setLoading] = useState(false);
-    const [shareHovered, setShareHovered] = useState(false);
+    const [loanRequestStatus, setLoanRequestStatus] = useState<LoanRequest['status'] | null>(loanRequest?.status ?? null);
+    const [requestingLoan, setRequestingLoan] = useState(false);
+    const lastNotifiedLoanStatusRef = useRef<LoanRequest['status'] | null>(loanRequest?.status ?? null);
+    const currentBookIdRef = useRef<number | undefined>(book?.id);
 
     // Ref for share button/menu
     const shareMenuRef = useRef<HTMLDivElement>(null);
@@ -117,9 +130,7 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
     // Close popovers on route change (mobile UX polish)
     useEffect(() => {
         const unlisten = router.on('finish', () => setShowShareMenu(false));
-        return () => {
-            /* @ts-ignore */ unlisten?.();
-        };
+        return () => (unlisten as (() => void) | undefined)?.();
     }, []);
 
     // Click-away to dismiss share menu (desktop/tablet)
@@ -136,12 +147,93 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
         return () => document.removeEventListener('mousedown', handleClick);
     }, [showShareMenu]);
 
+    useEffect(() => {
+        setLoanRequestStatus(loanRequest?.status ?? null);
+    }, [book?.id, loanRequest?.status]);
+
+    useEffect(() => {
+        if (currentBookIdRef.current !== book?.id) {
+            currentBookIdRef.current = book?.id;
+            lastNotifiedLoanStatusRef.current = loanRequest?.status ?? null;
+        }
+    }, [book?.id, loanRequest?.status]);
+
+    useEffect(() => {
+        const previousStatus = lastNotifiedLoanStatusRef.current;
+        if (loanRequestStatus === previousStatus) {
+            return;
+        }
+
+        if (loanRequestStatus === 'approved') {
+            setToast({
+                show: true,
+                message: `${book?.title ?? 'Book'} request approved.`,
+                type: 'success',
+            });
+        } else if (loanRequestStatus === 'rejected') {
+            setToast({
+                show: true,
+                message: `${book?.title ?? 'Book'} request rejected.`,
+                type: 'error',
+            });
+        }
+
+        lastNotifiedLoanStatusRef.current = loanRequestStatus;
+    }, [loanRequestStatus, book?.title]);
+
+    useEffect(() => {
+        const echoInstance = echo;
+        if (!authUser?.id || !echoInstance) return;
+
+        const channelName = `book-loan-requests.user.${authUser.id}`;
+        const channel = echoInstance.private(channelName);
+
+        const handleStatusUpdate = (event: {
+            loanRequest?: {
+                book_id?: number;
+                status?: LoanRequest['status'];
+            };
+        }) => {
+            if (!book?.id || event.loanRequest?.book_id !== book.id || !event.loanRequest.status) {
+                return;
+            }
+
+            setLoanRequestStatus(event.loanRequest.status);
+        };
+
+        channel.listen('.book-loan-request.updated', handleStatusUpdate);
+
+        return () => {
+            channel.stopListening('.book-loan-request.updated');
+            echoInstance.leave(channelName);
+        };
+    }, [authUser?.id, book?.id, book?.title]);
+
+    useEffect(() => {
+        if (!book?.id) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            if (requestingLoan) {
+                return;
+            }
+
+            router.reload({
+                only: ['book', 'loanRequest'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 1500);
+
+        return () => window.clearInterval(intervalId);
+    }, [book?.id, requestingLoan]);
+
     const handleLanguageChange = () => {
         setLanguage(language === 'en' ? 'kh' : 'en');
     };
 
     const handleShare = (platform: string) => {
-        setShareHovered(true);
         const shareUrl = encodeURIComponent(window.location.href);
         const shareText = encodeURIComponent(`${book?.title} - ${translations[language].read}/${translations[language].views}.`);
         let url = '';
@@ -168,11 +260,53 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
                     type: 'success',
                 });
                 setShowShareMenu(false);
-                setTimeout(() => setShareHovered(false), 1200);
                 return;
         }
         window.open(url, '_blank', 'noopener,noreferrer');
-        setTimeout(() => setShareHovered(false), 1200);
+    };
+
+    const handleLoanRequest = async () => {
+        if (!book?.id || requestingLoan) {
+            return;
+        }
+
+        setRequestingLoan(true);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.store', book.id), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to submit loan request.');
+            }
+
+            setLoanRequestStatus('pending');
+            setToast({
+                show: true,
+                message: data.message || 'Loan request submitted.',
+                type: 'success',
+            });
+        } catch (error) {
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : 'Failed to submit loan request.',
+                type: 'error',
+            });
+        } finally {
+            setRequestingLoan(false);
+        }
     };
 
     const handleDownload = async () => {
@@ -242,6 +376,16 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
             </div>
         );
     }
+
+    const canShowLoanRequestButton = canRequestLoan && book.type === 'physical';
+    const loanRequestLabel =
+        loanRequestStatus === 'pending'
+            ? 'Request Pending'
+            : loanRequestStatus === 'approved'
+              ? 'Request Approved'
+              : 'Request to Borrow';
+    const shouldDisableLoanRequestButton =
+        requestingLoan || loanRequestStatus === 'pending' || loanRequestStatus === 'approved' || !book.is_available;
 
     const renderContributorSection = () => {
         if (!book.user) return null;
@@ -662,6 +806,17 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [] }:
                                                 <Download className="mr-2 h-5 w-5 sm:mr-3" />
                                                 {translations[language].download_pdf}
                                             </span>
+                                        </button>
+                                    )}
+                                    {canShowLoanRequestButton && (
+                                        <button
+                                            type="button"
+                                            onClick={handleLoanRequest}
+                                            className="w-full transform rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-base font-bold text-white shadow-lg shadow-emerald-600/40 transition-all hover:scale-[1.01] hover:shadow-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:px-6 sm:py-3 sm:text-lg"
+                                            disabled={shouldDisableLoanRequestButton}
+                                            aria-label={loanRequestLabel}
+                                        >
+                                            {requestingLoan ? 'Sending request...' : loanRequestLabel}
                                         </button>
                                     )}
                                 </div>

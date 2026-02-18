@@ -3,6 +3,7 @@
 use App\Http\Controllers\BookcaseController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookLoanController;
+use App\Http\Controllers\BookLoanRequestController;
 use App\Http\Controllers\CampusController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
@@ -53,6 +54,8 @@ Route::middleware(['auth', 'role:staff|admin'])
         // BookLoans import/export
         Route::get('bookloans/export', [BookLoanController::class, 'export'])->name('bookloans.export');
         Route::post('bookloans/import', [BookLoanController::class, 'import'])->name('bookloans.import');
+        Route::patch('loan-requests/{loanRequest}/decision', [BookLoanRequestController::class, 'decide'])
+            ->name('bookloans.requests.decide');
 
         Route::resources([
             'books' => BookController::class,
@@ -92,9 +95,13 @@ Route::get('/e-library', [LibraryController::class, 'globalEbooks'])
 Route::get('/library/{book}', [LibraryController::class, 'show'])
     ->middleware([
         'auth',
-        'throttle:20,2',
+        // 'throttle:20,2',
     ])
     ->name('library.show');
+
+Route::post('/library/{book}/loan-requests', [BookLoanRequestController::class, 'store'])
+    ->middleware('auth')
+    ->name('library.loan-requests.store');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

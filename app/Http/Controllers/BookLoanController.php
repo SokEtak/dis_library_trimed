@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BookLoan\BookLoanRequest;
 use App\Models\Book;
 use App\Models\BookLoan;
+use App\Models\BookLoanRequest as BookLoanRequestModel;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -32,9 +33,29 @@ class BookLoanController extends Controller
         }
 
         $bookloans = $query->get();
+        $loanRequests = BookLoanRequestModel::query()
+            ->with(['book:id,title', 'requester:id,name'])
+            ->pending()
+            ->when($this->userCampusId(), function ($requestQuery, $campusId) {
+                $requestQuery->where('campus_id', $campusId);
+            })
+            ->latest('created_at')
+            ->get()
+            ->map(function ($loanRequest) {
+                return [
+                    'id' => $loanRequest->id,
+                    'book_id' => $loanRequest->book_id,
+                    'book_title' => $loanRequest->book?->title,
+                    'requester_id' => $loanRequest->requester_id,
+                    'requester_name' => $loanRequest->requester?->name,
+                    'status' => $loanRequest->status,
+                    'created_at' => optional($loanRequest->created_at)->toIso8601String(),
+                ];
+            });
 
         return Inertia::render('BookLoans/Index', [
             'bookloans' => $bookloans,
+            'loanRequests' => $loanRequests,
         ]);
     }
 
