@@ -114,6 +114,54 @@ class ShelvesController extends Controller
     }
 
     /**
+     * Export shelves as CSV.
+     */
+    public function export()
+    {
+        $csv = (new \App\Exports\ShelfExport())->toCsvString();
+        $filename = 'shelves_export_'.now()->format('Ymd_His').'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Import shelves from a CSV file.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        try {
+            $result = (new \App\Imports\ShelfImport())->importFromPath(
+                $validated['import_file']->getRealPath()
+            );
+
+            $message = "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Failed: {$result['failed']}.";
+
+            if ($result['failed'] > 0) {
+                $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
+
+                return redirect()->route('shelves.index')->with('flash', [
+                    'error' => $message.' '.$sampleErrors,
+                ]);
+            }
+
+            return redirect()->route('shelves.index')->with('flash', [
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->route('shelves.index')->with('flash', [
+                'error' => 'Import failed: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Redirect if the user is not a staff member.
      */
     protected function shouldRedirectIfNotStaff(): ?RedirectResponse

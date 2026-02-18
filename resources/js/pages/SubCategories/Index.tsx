@@ -363,6 +363,8 @@ export default function SubcategoriesIndex({ subcategories = [], flash, isSuperL
                 show: (id) => route("subcategories.show", id),
                 edit: (id) => route("subcategories.edit", id),
                 destroy: (id) => route("subcategories.destroy", id),
+                export: route("subcategories.export"),
+                import: route("subcategories.import"),
             }}
             flash={flash}
             modalFields={modalFields}

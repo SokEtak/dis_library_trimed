@@ -84,6 +84,7 @@ interface PageProps {
     scope?: 'local' | 'global';
     bookType?: 'ebook' | 'physical';
     lang?: 'en' | 'kh';
+    [key: string]: any;
 }
 
 const formatDate = (dateInput: string | number | undefined): string => {
@@ -145,7 +146,42 @@ export default function Index() {
         setFilterLanguage('All');
         setSortProgram('All');
         setSortBy('None');
+        setCurrentPage(1);
     };
+
+    // Count active filters for badge display
+    const activeFilterCount = [
+        filterCategory !== 'All',
+        filterSubCategory !== 'All',
+        filterBookcase !== 'All',
+        filterShelf !== 'All',
+        filterGrade !== 'All',
+        filterSubject !== 'All',
+        filterCampus !== 'All',
+        filterLanguage !== 'All',
+        sortProgram !== 'All',
+        sortBy !== 'None',
+        search !== '',
+    ].filter(Boolean).length;
+
+    // Get active filters for display as chips
+    const getActiveFilters = () => {
+        const active = [];
+        if (search) active.push({ type: 'search', label: search, icon: '🔍' });
+        if (filterCategory !== 'All') active.push({ type: 'category', label: filterCategory, icon: '📚' });
+        if (filterSubCategory !== 'All') active.push({ type: 'subcategory', label: filterSubCategory, icon: '📖' });
+        if (filterBookcase !== 'All') active.push({ type: 'bookcase', label: filterBookcase, icon: '🗄️' });
+        if (filterShelf !== 'All') active.push({ type: 'shelf', label: filterShelf, icon: '🛎️' });
+        if (filterGrade !== 'All') active.push({ type: 'grade', label: filterGrade, icon: '🎓' });
+        if (filterSubject !== 'All') active.push({ type: 'subject', label: filterSubject, icon: '✏️' });
+        if (filterCampus !== 'All') active.push({ type: 'campus', label: filterCampus, icon: '🏫' });
+        if (filterLanguage !== 'All') active.push({ type: 'language', label: filterLanguage, icon: '🗣️' });
+        if (sortProgram !== 'All') active.push({ type: 'program', label: sortProgram, icon: '📋' });
+        if (sortBy !== 'None') active.push({ type: 'sort', label: sortBy, icon: '↔️' });
+        return active;
+    };
+
+    const activeFilters = getActiveFilters();
 
     const currentLibrary = bookType === 'ebook' ? 'ebook' : scope === 'global' ? 'global' : 'local';
 
@@ -175,6 +211,22 @@ export default function Index() {
 
     const categories = useMemo(() => Array.from(new Set(books.data.map((b) => b.category?.name).filter(Boolean))), [books.data]);
     const subcategories = useMemo(() => Array.from(new Set(books.data.map((b) => b.subcategory?.name).filter(Boolean))), [books.data]);
+    
+    // Get relevant subcategories based on selected category
+    const relevantSubcategories = useMemo(() => {
+        if (filterCategory === 'All') {
+            return subcategories;
+        }
+        return Array.from(
+            new Set(
+                books.data
+                    .filter((b) => b.category?.name === filterCategory)
+                    .map((b) => b.subcategory?.name)
+                    .filter(Boolean),
+            ),
+        );
+    }, [filterCategory, books.data, subcategories]);
+    
     const bookcases = useMemo(() => Array.from(new Set(books.data.map((b) => b.bookcase?.code).filter(Boolean))), [books.data]);
     const shelves = useMemo(() => Array.from(new Set(books.data.map((b) => b.shelf?.code).filter(Boolean))), [books.data]);
     const grades = useMemo(() => {
@@ -244,7 +296,9 @@ export default function Index() {
                     if (typeof dateA === 'number' && typeof dateB === 'number') {
                         return dateB - dateA;
                     }
-                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    const timeB = new Date(String(dateB)).getTime();
+                    const timeA = new Date(String(dateA)).getTime();
+                    return timeB - timeA;
                 }
                 return 0;
             } else if (sortBy === 'Title A-Z') {
@@ -477,30 +531,100 @@ export default function Index() {
                 {flash.message && (
                     <div className="rounded-lg bg-green-100 p-4 text-green-800 shadow-lg dark:bg-green-900 dark:text-green-200">{flash.message}</div>
                 )}
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-cyan-100 bg-white/60 p-4 shadow-lg backdrop-blur-[4px] sm:gap-4 sm:p-6 dark:border-cyan-900 dark:bg-gray-900/60">
-                    <Select value={currentLibrary} onValueChange={handleLibraryChange}>
-                        <SelectTrigger
-                            className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs text-center leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
-                        >
-                            <SelectValue placeholder={t.selectLibrary} className="whitespace-nowrap" />
-                        </SelectTrigger>
+                <div className="mt-2 flex flex-col rounded-2xl border border-cyan-100 bg-white/60 p-4 shadow-lg backdrop-blur-[4px] sm:p-6 dark:border-cyan-900 dark:bg-gray-900/60 space-y-4 sm:space-y-5">
+                    {/* Active Filters Display Section */}
+                    {activeFilterCount > 0 && (
+                        <div className="rounded-xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-blue-50 p-3 sm:p-4 dark:border-cyan-800 dark:from-cyan-950/50 dark:to-blue-950/50">
+                            <div className="mb-2 flex items-center justify-between">
+                                <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                    {language === 'en' ? 'Active Filters' : 'ច្រោះដែលកំពុងដំណើរការ'} ({activeFilterCount})
+                                </span>
+                                <button
+                                    onClick={resetFilters}
+                                    className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cyan-600 hover:bg-cyan-50 transition dark:bg-gray-800 dark:text-cyan-400 dark:hover:bg-gray-700"
+                                >
+                                    {language === 'en' ? 'Clear All' : 'សម្អាត'}
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {activeFilters.map((filter, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs border border-cyan-200 shadow-sm dark:bg-gray-800 dark:border-cyan-700"
+                                    >
+                                        <span className="text-sm">{filter.icon} {filter.label}</span>
+                                        <button
+                                            onClick={() => {
+                                                switch (filter.type) {
+                                                    case 'search':
+                                                        setSearch('');
+                                                        break;
+                                                    case 'category':
+                                                        setFilterCategory('All');
+                                                        break;
+                                                    case 'subcategory':
+                                                        setFilterSubCategory('All');
+                                                        break;
+                                                    case 'bookcase':
+                                                        setFilterBookcase('All');
+                                                        break;
+                                                    case 'shelf':
+                                                        setFilterShelf('All');
+                                                        break;
+                                                    case 'grade':
+                                                        setFilterGrade('All');
+                                                        break;
+                                                    case 'subject':
+                                                        setFilterSubject('All');
+                                                        break;
+                                                    case 'campus':
+                                                        setFilterCampus('All');
+                                                        break;
+                                                    case 'language':
+                                                        setFilterLanguage('All');
+                                                        break;
+                                                    case 'program':
+                                                        setSortProgram('All');
+                                                        break;
+                                                    case 'sort':
+                                                        setSortBy('None');
+                                                        break;
+                                                }
+                                            }}
+                                            className="ml-2 text-gray-500 hover:text-red-500 transition opacity-70 hover:opacity-100"
+                                            aria-label={`Remove ${filter.label} filter`}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                        <SelectContent className="w-auto max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                            {/* <SelectItem value="global" className="px-3 py-2 text-center break-words">
-                                {t.globalLibrary}
-                            </SelectItem> */}
-                            <SelectItem value="local" className="px-3 py-2 text-center break-words">
-                                {t.localLibrary}
-                            </SelectItem>
-                            <SelectItem value="ebook" className="px-3 py-2 text-center break-words">
-                                {t.ebooksLibrary}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {/* Filter Controls Section */}
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                        <Select value={currentLibrary} onValueChange={handleLibraryChange}>
+                            <SelectTrigger
+                                className={`w-full border text-gray-900 hover:border-gray-400 sm:w-auto dark:text-white sm:px-4 sm:py-2 sm:text-sm h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs text-center leading-6 transition border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 focus:ring-cyan-500`}
+                            >
+                                <SelectValue placeholder={t.selectLibrary} className="whitespace-nowrap" />
+                            </SelectTrigger>
 
+                            <SelectContent className="w-auto max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                                <SelectItem value="local" className="px-3 py-2 text-center break-words">
+                                    {t.localLibrary}
+                                </SelectItem>
+                                <SelectItem value="ebook" className="px-3 py-2 text-center break-words">
+                                    {t.ebooksLibrary}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                     {[
-                        // { label: t.category, value: filterCategory, onChange: setFilterCategory, options: categories },
-                        // { label: t.subcategory, value: filterSubCategory, onChange: setFilterSubCategory, options: subcategories },
+                        { label: t.category, value: filterCategory, onChange: setFilterCategory, options: categories },
+                        { label: t.subcategory, value: filterSubCategory, onChange: setFilterSubCategory, options: relevantSubcategories },
                         ...(bookType === 'physical'
                             ? [
                                   { label: t.bookcase, value: filterBookcase, onChange: setFilterBookcase, options: bookcases },
@@ -525,49 +649,62 @@ export default function Index() {
                         },
                         { label: t.grade, value: filterGrade, onChange: setFilterGrade, options: grades },
                         { label: t.subject, value: filterSubject, onChange: setFilterSubject, options: subjects },
-                        // ...(bookType === 'physical' && scope === 'global'
-                        //     ? [{ label: t.campus, value: filterCampus, onChange: setFilterCampus, options: campuses }]
-                        //     : []),
-                    ].map(({ label, value, onChange, options, display }) => (
-                        <Select key={label} value={value} onValueChange={onChange}>
-                            <SelectTrigger
-                                className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
-                            >
-                                <SelectValue placeholder={label} />
-                            </SelectTrigger>
-
-                            <SelectContent className="max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                                <SelectItem
-                                    value="All"
-                                    className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
-                                >
-                                    {language === 'en' ? `${allText} ${label}` : `${label}${allText}`}
-                                </SelectItem>
-
-                                {options.map((opt) => (
-                                    <SelectItem
-                                        key={opt}
-                                        value={opt}
-                                        className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ].map(({ label, value, onChange, options, display }) => {
+                        const isActive = value !== 'All';
+                        return (
+                            <div key={label} className="relative group">
+                                <Select value={value} onValueChange={onChange}>
+                                    <SelectTrigger
+                                        className={`w-full border text-gray-900 hover:border-gray-400 sm:w-auto dark:text-white sm:px-4 sm:py-2 sm:text-sm h-auto min-h-[2.5rem] rounded-full px-3 py-2 text-xs leading-6 transition flex items-center gap-2 ${
+                                            isActive
+                                                ? 'border-cyan-400 bg-cyan-50/70 dark:border-cyan-600 dark:bg-cyan-900/30 font-medium'
+                                                : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600'
+                                        } focus:ring-cyan-500`}
                                     >
-                                        {display ? display(opt) : opt}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    ))}
+                                        {isActive && <span className="inline-block h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400" />}
+                                        <SelectValue placeholder={label} />
+                                    </SelectTrigger>
+
+                                    <SelectContent className="max-w-[90vw] min-w-[150px] border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                                        <SelectItem
+                                            value="All"
+                                            className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        >
+                                            {language === 'en' ? `${allText} ${label}` : `${label}${allText}`}
+                                        </SelectItem>
+
+                                        {options.map((opt) => (
+                                            <SelectItem
+                                                key={opt}
+                                                value={opt}
+                                                className="px-3 py-2 text-center break-words whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            >
+                                                {display ? display(opt) : opt}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        );
+                    })}
+                    </div>
                     <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger
-                            className={`w-full border border-gray-300 bg-white text-gray-900 hover:border-gray-400 sm:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 focus:ring-${accentColor}-500 flex h-auto min-h-[2.5rem] items-center justify-center rounded-full px-3 py-2 text-xs leading-6 transition sm:px-4 sm:py-2 sm:text-sm`}
+                            className={`w-full border text-gray-900 hover:border-gray-400 sm:w-auto dark:text-white sm:px-4 sm:py-2 sm:text-sm flex h-auto min-h-[2.5rem] items-center justify-center rounded-full px-3 py-2 text-xs leading-6 transition gap-2 ${
+                                sortBy !== 'None'
+                                    ? 'border-cyan-400 bg-cyan-50/70 dark:border-cyan-600 dark:bg-cyan-900/30 font-medium'
+                                    : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600'
+                            } focus:ring-cyan-500`}
                         >
+                            {sortBy !== 'None' && <span className="inline-block h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400" />}
                             {sortBy === 'Title A-Z' ? (
-                                <ArrowUpAZ className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
+                                <ArrowUpAZ className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                             ) : sortBy === 'Newest' ? (
-                                <Clock className="mr-2 h-4 w-4 text-red-500 dark:text-red-400" />
+                                <Clock className="h-4 w-4 text-red-500 dark:text-red-400" />
                             ) : sortBy === 'Most Viewed' ? (
-                                <Eye className="mr-2 h-4 w-4 text-orange-500 dark:text-orange-400" />
+                                <Eye className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                             ) : (
-                                <ArrowDownUp className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <ArrowDownUp className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                             )}
                             <SelectValue placeholder={t.sortBy} className="whitespace-nowrap" />
                         </SelectTrigger>
@@ -593,6 +730,7 @@ export default function Index() {
                             </SelectItem>
                         </SelectContent>
                     </Select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-4 md:gap-8 lg:grid-cols-5 lg:gap-10 xl:grid-cols-6 2xl:grid-cols-6">
                     {paginatedBooks.length > 0 ? (

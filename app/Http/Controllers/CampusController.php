@@ -104,4 +104,55 @@ class CampusController extends Controller
         return Redirect::route('campuses.index')
             ->with('flash', ['message' => 'Campus deleted successfully.', 'type' => 'success']);
     }
+
+    /**
+     * Export campuses as CSV.
+     */
+    public function export()
+    {
+        $csv = (new \App\Exports\CampusExport())->toCsvString();
+        $filename = 'campuses_export_'.now()->format('Ymd_His').'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Import campuses from a CSV file.
+     */
+    public function import(\Illuminate\Http\Request $request)
+    {
+        $validated = $request->validate([
+            'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        try {
+            $result = (new \App\Imports\CampusImport())->importFromPath(
+                $validated['import_file']->getRealPath()
+            );
+
+            $message = "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Failed: {$result['failed']}.";
+
+            if ($result['failed'] > 0) {
+                $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
+
+                return Redirect::route('campuses.index')->with('flash', [
+                    'error' => $message.' '.$sampleErrors,
+                    'type' => 'error',
+                ]);
+            }
+
+            return Redirect::route('campuses.index')->with('flash', [
+                'message' => $message,
+                'type' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            return Redirect::route('campuses.index')->with('flash', [
+                'error' => 'Import failed: '.$e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
+    }
 }

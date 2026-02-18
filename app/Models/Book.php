@@ -79,7 +79,6 @@ class Book extends Model
     public function scopeActive($query, $book_type, $scope = 'local')
     {
         $conditions = [];
-        $conditions['is_deleted'] = 0;
 
         // For regular, handle global and local scope
         if (Auth::user()->hasAnyRole(['regular-user']) && $scope == 'local') {
@@ -99,13 +98,17 @@ class Book extends Model
             if ($book_type === 'del') {
                 $conditions['is_deleted'] = 1; // For deleted books
             } elseif ($book_type === 'miss') {
+                $conditions['is_deleted'] = 0;
                 $conditions['is_available'] = 0; // For missing books (not found at bookcase/shelf)
             } else {
-                $conditions['type'] = $book_type; // Filter by type (e.g., 'physical', 'ebook')
-                $conditions['is_available'] = 1;
+                // Filter by type (e.g., 'physical', 'ebook')
+                $conditions['type'] = $book_type;
+                $conditions['is_deleted'] = 0;
             }
+        } else {
+            // When $book_type is null, show all non-deleted books
+            $conditions['is_deleted'] = 0;
         }
-        // When $book_type is null, no is_available or type filters are applied
 
         return $query->where($conditions)->select(self::$selectColumns);
     }

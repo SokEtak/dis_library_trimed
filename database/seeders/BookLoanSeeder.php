@@ -18,11 +18,11 @@ class BookLoanSeeder extends Seeder
     public function run(): void
     {
         // Minimal guard: require at least one book, user and campus
-        if (Book::count() === 0 || User::count() === 0 || Campus::count() === 0) {
-            return;
-        }
+        // if (Book::count() === 0 || User::count() === 0 || Campus::count() === 0) {
+        //     return;
+        // }
 
-        // Use factory to generate loans (factory handles randomness)
-        BookLoan::factory()->count(100)->create();
+        // // Use factory to generate loans (factory handles randomness)
+        // BookLoan::factory()->count(100)->create();
     }
 }

@@ -35,6 +35,13 @@ class StoreBookRequest extends FormRequest
             ]);
         }
 
+        // Treat empty select value as null for nullable validation.
+        if ($this->has('program') && $this->input('program') === '') {
+            $this->merge([
+                'program' => null,
+            ]);
+        }
+
         // set visibility to true for ebook to make sure it works correctly
         if ($this->input('type') === 'ebook') {
             $this->merge([

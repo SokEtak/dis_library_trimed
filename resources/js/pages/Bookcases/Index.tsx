@@ -309,6 +309,8 @@ export default function BookcasesIndex({ bookcases = [], flash, isSuperLibrarian
                 create: route("bookcases.create"),
                 show: (id) => route("bookcases.show", { bookcase: id }),
                 edit: (id) => route("bookcases.edit", { bookcase: id }),
+                export: route("bookcases.export"),
+                import: route("bookcases.import"),
             }}
             flash={flash}
             modalFields={modalFields}

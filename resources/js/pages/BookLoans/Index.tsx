@@ -723,6 +723,8 @@ export default function BookLoans({ bookloans = [], flash, books, users, lang = 
                     show: (id) => route("bookloans.show", id),
                     edit: (id) => route("bookloans.edit", id),
                     destroy: (id) => route("bookloans.destroy", id),
+                    export: route("bookloans.export"),
+                    import: route("bookloans.import"),
                 }}
                 flash={flash}
                 modalFields={modalFields}

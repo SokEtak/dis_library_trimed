@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\BookExport;
 use App\Http\Requests\Book\StoreBookRequest;
 use App\Http\Requests\Book\UpdateBookRequest;
+use App\Imports\BookImport;
 use App\Models\Book;
 use App\Models\Bookcase;
 use App\Models\Campus;
@@ -14,6 +16,7 @@ use App\Models\SubCategory;
 use App\Models\Subject;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +32,7 @@ class BookController extends Controller
         $book_type = request()->query('type', null);
 
         // Allow 'miss' and 'del' as valid book_types
-        if (! in_array($book_type, ['physical', 'ebook', 'miss', 'del']) && $book_type !== null) {
+        if (! in_array($book_type, ['physical', 'ebook', 'miss', 'del'])) {
             $book_type = null; // Default to null to fetch all non-deleted books
         }
         // Sort desc to see the newest created book
@@ -47,6 +50,49 @@ class BookController extends Controller
             'availableGrades' => Grade::all(),
             'isSuperLibrarian' => $this->isSuperLibrarian(),
             'flash' => session('flash', []),
+        ]);
+    }
+
+    /**
+     * Export books as CSV.
+     */
+    public function export(): Response
+    {
+        $csv = (new BookExport())->toCsvString();
+        $filename = 'books_export_'.now()->format('Ymd_His').'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Import books from a CSV file.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        $result = (new BookImport())->importFromPath(
+            $validated['import_file']->getRealPath(),
+            Auth::id()
+        );
+
+        $message = "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Failed: {$result['failed']}.";
+
+        if ($result['failed'] > 0) {
+            $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
+
+            return redirect()->route('books.index')->with('flash', [
+                'error' => $message.' '.$sampleErrors,
+            ]);
+        }
+
+        return redirect()->route('books.index')->with('flash', [
+            'message' => $message,
         ]);
     }
 
@@ -366,6 +412,32 @@ class BookController extends Controller
             ]);
 
             return redirect()->back()->with('flash', ['error' => 'Book update failed: '.$e->getMessage()]);
+        }
+    }
+
+    /**
+     * Restore a soft-deleted book (set is_deleted to false).
+     */
+    public function restore(Request $request, Book $book): RedirectResponse
+    {
+        if (! $this->isDeleted($book)) {
+            return redirect()->back()->with('flash', ['error' => 'Book is not deleted or already active.']);
+        }
+
+        if (! $this->belongsToUserCampus($book)) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $book->update(['is_deleted' => false]);
+
+            $locale = app()->getLocale();
+            $message = $locale === 'kh' ? 'សៀវភៅត្រូវបានស្ដារឡើងវិញដោយជោគជ័យ!' : 'Book restored successfully!';
+
+            return redirect()->route('books.index')->with('flash', ['message' => $message]);
+        } catch (\Exception $e) {
+            Log::error('Failed to restore book', ['error' => $e->getMessage(), 'book_id' => $book->id]);
+            return redirect()->back()->with('flash', ['error' => 'Failed to restore book: '.$e->getMessage()]);
         }
     }
 

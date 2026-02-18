@@ -36,6 +36,11 @@ class UpdateBookRequest extends FormRequest
             $this->merge(['published_at' => (int) $this->published_at]);
         }
 
+        // Treat empty select value as null for nullable validation.
+        if ($this->has('program') && $this->input('program') === '') {
+            $this->merge(['program' => null]);
+        }
+
         if ($type === 'ebook') {
             $this->merge(['is_available' => true]);
         }
@@ -53,7 +58,7 @@ class UpdateBookRequest extends FormRequest
             'page_count' => ['sometimes', 'integer', 'min:1'],
             'publisher' => ['sometimes', 'string', 'max:255'],
             'language' => ['sometimes', 'in:en,kh'],
-            'program' => ['sometimes', 'in:Cambodia,American'],
+            'program' => ['nullable', 'in:Cambodia,American'],
             'published_at' => ['sometimes', 'integer', 'digits:4', 'min:1000', 'max:2025'],
             'author' => ['sometimes', 'string', 'max:255'],
             'flip_link' => ['sometimes', 'url', 'max:255'],
@@ -103,7 +108,7 @@ class UpdateBookRequest extends FormRequest
             'is_available.boolean' => 'Availability must be a boolean value.',
             'downloadable.required' => 'Downloadable status is required for e-books.',
             'downloadable.boolean' => 'Downloadable status must be a boolean value.',
-            'cover.image' => 'Cover must be a valid JPEG or PNG image.',
+            // 'cover.image' => 'Cover must be a valid JPEG or PNG image.',
             'cover.mimes' => 'Cover must be a JPEG or PNG image.',
             'cover.max' => 'Cover image must not exceed 5MB.',
             'pdf_url.mimes' => 'File must be a valid PDF.',

@@ -26,6 +26,34 @@ Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('dash
 Route::middleware(['auth', 'role:staff|admin'])
     ->prefix('admin/library')
     ->group(function () {
+        // Books import/export
+        Route::get('books/export', [BookController::class, 'export'])->name('books.export');
+        Route::post('books/import', [BookController::class, 'import'])->name('books.import');
+
+        // Bookcases import/export
+        Route::get('bookcases/export', [BookcaseController::class, 'export'])->name('bookcases.export');
+        Route::post('bookcases/import', [BookcaseController::class, 'import'])->name('bookcases.import');
+
+        // Categories import/export
+        Route::get('categories/export', [CategoryController::class, 'export'])->name('categories.export');
+        Route::post('categories/import', [CategoryController::class, 'import'])->name('categories.import');
+
+        // SubCategories import/export
+        Route::get('subcategories/export', [SubCategoryController::class, 'export'])->name('subcategories.export');
+        Route::post('subcategories/import', [SubCategoryController::class, 'import'])->name('subcategories.import');
+
+        // Shelves import/export
+        Route::get('shelves/export', [ShelvesController::class, 'export'])->name('shelves.export');
+        Route::post('shelves/import', [ShelvesController::class, 'import'])->name('shelves.import');
+
+        // Campuses import/export
+        Route::get('campuses/export', [CampusController::class, 'export'])->name('campuses.export');
+        Route::post('campuses/import', [CampusController::class, 'import'])->name('campuses.import');
+
+        // BookLoans import/export
+        Route::get('bookloans/export', [BookLoanController::class, 'export'])->name('bookloans.export');
+        Route::post('bookloans/import', [BookLoanController::class, 'import'])->name('bookloans.import');
+
         Route::resources([
             'books' => BookController::class,
             'bookcases' => BookcaseController::class,
@@ -39,6 +67,8 @@ Route::middleware(['auth', 'role:staff|admin'])
             'campuses' => CampusController::class,
             'schools' => SchoolController::class,
         ]);
+        // Restore soft-deleted books
+        Route::post('books/{book}/restore', [BookController::class, 'restore'])->name('books.restore');
     });
 
 // -----Library------

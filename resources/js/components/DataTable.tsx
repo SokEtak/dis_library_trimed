@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -34,7 +34,12 @@ import {
     ArrowRight,
     X,
     Columns2,
+    Download,
+    Upload,
+    Loader2,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
     ColumnDef,
     ColumnFiltersState,
@@ -81,6 +86,8 @@ interface DataTableProps<T extends DataItem> {
         show: (id: number) => string;
         edit: (id: number) => string;
         destroy?: (id: number) => string;
+        export?: string;
+        import?: string;
     };
     flash?: {
         message?: string;
@@ -98,7 +105,7 @@ const commonStyles = {
     indigoButton:
         "bg-indigo-500 text-white hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700",
     outlineButton:
-        "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-800",
+        "bg-white dark:bg-gray-700 border-blue-200 dark:border-blue-600 hover:bg-indigo-50 dark:hover:bg-indigo-800",
     gradientBg: "bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-indigo-900",
     tooltipBg: "bg-gradient-to-br from-blue-900 to-indigo-600 text-white rounded-xl", // Kept for consistency if you add tooltips back
 };
@@ -120,6 +127,9 @@ function DataTable<T extends DataItem>({
     const [isTableLoading, setIsTableLoading] = useState(true);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [importProcessing, setImportProcessing] = useState(false);
+    const importFileInputRef = useRef<HTMLInputElement>(null);
+    const { data: importData, setData: setImportData, post: postImport, reset: resetImportForm } = useForm<{ import_file?: File }>({});
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
         const initial: VisibilityState = {};
 
@@ -206,10 +216,41 @@ function DataTable<T extends DataItem>({
         }
     };
 
+    const triggerImportPicker = () => {
+        importFileInputRef.current?.click();
+    };
+
+    const handleImportFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !routes.import) return;
+
+        setImportProcessing(true);
+        setImportData('import_file', file);
+        postImport(routes.import, {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => {
+                setImportProcessing(false);
+                resetImportForm();
+                if (importFileInputRef.current) {
+                    importFileInputRef.current.value = '';
+                }
+            },
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
             <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+                {/* File input for import */}
+                <input 
+                    ref={importFileInputRef} 
+                    type="file" 
+                    accept=".csv,text/csv" 
+                    className="hidden" 
+                    onChange={handleImportFileChange} 
+                />
                 {/* Main Controls Header */}
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-row items-center justify-between w-full">
@@ -223,61 +264,129 @@ function DataTable<T extends DataItem>({
                                 disabled={isTableLoading || processing}
                             />
                         </div>
-                        {/* Center: Column Visibility and Add Button */}
-                        <div className="flex-1 flex justify-center gap-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={`${commonStyles.button} ${commonStyles.outlineButton}`}
-                                        disabled={isTableLoading || processing}
-                                        aria-label="Toggle column visibility"
-                                    >
-                                        <Columns2 className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    align="center"
-                                    className="rounded-xl p-2 bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-700 shadow-xl"
-                                >
-                                    {table
-                                        .getAllColumns()
-                                        .filter((column) => column.getCanHide())
-                                        .map((column) => (
-                                            <DropdownMenuItem
-                                                key={column.id}
-                                                className="flex items-center justify-between px-3 py-2 capitalize cursor-pointer bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
-                                                onSelect={(e) => e.preventDefault()} // Prevent menu from closing
-                                            >
-                                                <span className={`${commonStyles.text} flex-1 flex items-center`}>
-                                                    {column.id.replace(/_/g, " ")}
-                                                </span>
-                                                {/* Switch Button */}
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="sr-only peer"
-                                                        checked={column.getIsVisible()}
-                                                        onChange={(e) => column.toggleVisibility(e.target.checked)}
+                        {/* Center: Action Buttons Group */}
+                        <div className="flex-1 flex justify-center">
+                            <ButtonGroup orientation="horizontal">
+                                {/* Column Visibility Button */}
+                                <DropdownMenu>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={`${commonStyles.button} ${commonStyles.outlineButton}`}
                                                         disabled={isTableLoading || processing}
-                                                    />
-                                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-gray-700 peer-checked:bg-indigo-600 transition-all"></div>
-                                                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transform peer-checked:translate-x-5 transition-all"></div>
-                                                </label>
-                                            </DropdownMenuItem>
-                                        ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                                asChild
-                                className={`${commonStyles.button} ${commonStyles.indigoButton}`}
-                                disabled={isTableLoading || processing}
-                                aria-label={`Add a new ${resourceName.slice(0, -1)}`}
-                            >
-                                <Link href={routes.create}>
-                                    <Plus className="h-4 w-4" />
-                                </Link>
-                            </Button>
+                                                        aria-label="Toggle column visibility"
+                                                    >
+                                                        <Columns2 className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
+                                                <p>Column Visibility</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DropdownMenuContent
+                                        align="center"
+                                        className="rounded-xl p-2 bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-700 shadow-xl"
+                                    >
+                                        {table
+                                            .getAllColumns()
+                                            .filter((column) => column.getCanHide())
+                                            .map((column) => (
+                                                <DropdownMenuItem
+                                                    key={column.id}
+                                                    className="flex items-center justify-between px-3 py-2 capitalize cursor-pointer bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                                                    onSelect={(e) => e.preventDefault()} // Prevent menu from closing
+                                                >
+                                                    <span className={`${commonStyles.text} flex-1 flex items-center`}>
+                                                        {column.id.replace(/_/g, " ")}
+                                                    </span>
+                                                    {/* Switch Button */}
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only peer"
+                                                            checked={column.getIsVisible()}
+                                                            onChange={(e) => column.toggleVisibility(e.target.checked)}
+                                                            disabled={isTableLoading || processing}
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-gray-700 peer-checked:bg-indigo-600 transition-all"></div>
+                                                        <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transform peer-checked:translate-x-5 transition-all"></div>
+                                                    </label>
+                                                </DropdownMenuItem>
+                                            ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                {/* Import Button */}
+                                {routes.import && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className={`${commonStyles.button} ${commonStyles.outlineButton} text-emerald-600 dark:text-emerald-300`}
+                                                    disabled={isTableLoading || processing || importProcessing}
+                                                    onClick={triggerImportPicker}
+                                                >
+                                                    {importProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
+                                                <p>Import from CSV</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+
+                                {/* Export Button */}
+                                {routes.export && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    className={`${commonStyles.button} ${commonStyles.outlineButton} text-amber-600 dark:text-amber-300`}
+                                                    disabled={isTableLoading || processing || importProcessing}
+                                                >
+                                                    <a href={routes.export}>
+                                                        <Download className="h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
+                                                <p>Export to CSV</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+
+                                {/* Add Button */}
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                asChild
+                                                className={`${commonStyles.button} ${commonStyles.indigoButton}`}
+                                                disabled={isTableLoading || processing}
+                                                aria-label={`Add a new ${resourceName.slice(0, -1)}`}
+                                            >
+                                                <Link href={routes.create}>
+                                                    <Plus className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
+                                            <p>Add new {resourceName.slice(0, -1)}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </ButtonGroup>
                         </div>
                         {/* Found n item at top right */}
                         <div className="flex-1 flex justify-end items-center">

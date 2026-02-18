@@ -151,6 +151,54 @@ class BookLoanController extends Controller
     }
 
     /**
+     * Export bookloans as CSV.
+     */
+    public function export()
+    {
+        $csv = (new \App\Exports\BookLoanExport())->toCsvString();
+        $filename = 'bookloans_export_'.now()->format('Ymd_His').'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Import bookloans from a CSV file.
+     */
+    public function import(\Illuminate\Http\Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        try {
+            $result = (new \App\Imports\BookLoanImport())->importFromPath(
+                $validated['import_file']->getRealPath()
+            );
+
+            $message = "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Failed: {$result['failed']}.";
+
+            if ($result['failed'] > 0) {
+                $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
+
+                return redirect()->route('bookloans.index')->with('flash', [
+                    'error' => $message.' '.$sampleErrors,
+                ]);
+            }
+
+            return redirect()->route('bookloans.index')->with('flash', [
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->route('bookloans.index')->with('flash', [
+                'error' => 'Import failed: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Redirect if the user is not a staff member.
      */
     protected function shouldRedirectIfNotStaff(): ?RedirectResponse

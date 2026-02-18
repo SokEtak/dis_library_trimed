@@ -452,6 +452,8 @@ export default function ShelvesIndex({ shelves = [], flash, isSuperLibrarian = f
                 show: (id) => route("shelves.show", id),
                 edit: (id) => route("shelves.edit", id),
                 destroy: (id) => route("shelves.destroy", id),
+                export: route("shelves.export"),
+                import: route("shelves.import"),
             }}
             flash={flash}
             modalFields={modalFields}

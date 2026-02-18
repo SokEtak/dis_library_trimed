@@ -260,6 +260,8 @@ export default function CategoriesIndex({ lang = "kh" }: { lang?: "kh" | "en" })
                 show: (id) => route("categories.show", id),
                 edit: (id) => route("categories.edit", id),
                 destroy: (id) => route("categories.destroy", id),
+                export: route("categories.export"),
+                import: route("categories.import"),
             }}
             flash={flash}
         />

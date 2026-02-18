@@ -129,7 +129,6 @@ interface FileFieldProps {
     selectedFileName?: string;
     onRemove?: () => void;
     fileError?: string;
-    required?: boolean;
 }
 
 const FileField: React.FC<FileFieldProps> = ({
@@ -148,7 +147,6 @@ const FileField: React.FC<FileFieldProps> = ({
     selectedFileName,
     onRemove,
     fileError,
-    required = false,
 }) => {
     const t = translations.kh;
 
@@ -205,15 +203,15 @@ const FileField: React.FC<FileFieldProps> = ({
                                 role="region"
                                 aria-label={`Drag and drop ${label.toLowerCase()} file`}
                             >
-                                <Input
-                                    id={id}
-                                    type="file"
-                                    accept={accept}
-                                    onChange={onChange}
-                                    className="hidden"
-                                    required={required}
-                                    aria-describedby={error || fileError ? `${id}-error` : undefined}
-                                />
+                                    <Input
+                                        id={id}
+                                        type="file"
+                                        accept={accept}
+                                        name={id}
+                                        onChange={onChange}
+                                        className="hidden"
+                                        aria-describedby={error || fileError ? `${id}-error` : undefined}
+                                    />
                                 <div className="space-y-3">
                                     {selectedFileName ? (
                                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -279,14 +277,15 @@ const FileField: React.FC<FileFieldProps> = ({
                                         }
                                     }}
                                 >
-                                    <Input
-                                        id={id}
-                                        type="file"
-                                        accept={accept}
-                                        onChange={onChange}
-                                        className="hidden"
-                                        aria-describedby={error || fileError ? `${id}-error` : undefined}
-                                    />
+                                <Input
+                                    id={id}
+                                    type="file"
+                                    accept={accept}
+                                    name={id}
+                                    onChange={onChange}
+                                    className="hidden"
+                                    aria-describedby={error || fileError ? `${id}-error` : undefined}
+                                />
                                     {previewUrl ? (
                                         <div className="relative h-full w-full">
                                             <img
@@ -356,9 +355,10 @@ export default function BooksCreate({
     const [grades, setGrades] = useState(initialGrades);
     const [subjects, setSubjects] = useState(initialSubjects);
     const [pdfFileError, setPdfFileError] = useState<string | null>(null);
+    const [coverFileError, setCoverFileError] = useState<string | null>(null);
     const [showErrorAlert, setShowErrorAlert] = useState(!!flash?.error);
 
-    const { data, setData, post, processing, errors, reset, setErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, setError } = useForm({
         //where to set initial form value
         title: '',
         description: '',
@@ -485,8 +485,10 @@ export default function BooksCreate({
         const file = e.target.files?.[0];
         if (!file) {
             setData(field, null);
-            if (field === 'cover') setCoverPreviewUrl(null);
-            else {
+            if (field === 'cover') {
+                setCoverPreviewUrl(null);
+                setCoverFileError(null);
+            } else {
                 setPdfPreviewUrl(null);
                 setPdfFileError(null);
             }
@@ -497,15 +499,16 @@ export default function BooksCreate({
             if (!file.type.match('image/(jpeg|png)')) {
                 setData(field, null);
                 e.target.value = '';
-                setPdfFileError(t.coverError);
+                setCoverFileError('Cover must be a valid JPEG or PNG image.');
                 return;
             }
-            if (file.size > 2 * 1024 * 1024) {
+            if (file.size > 5 * 1024 * 1024) {
                 setData(field, null);
                 e.target.value = '';
-                setPdfFileError('រូបភាពគម្របលើស 5MB។ សូមផ្ទុកឡើងឯកសារតូចជាង។');
+                setCoverFileError('Cover image must not exceed 5MB.');
                 return;
             }
+            setCoverFileError(null);
         }
         if (field === 'pdf_url') {
             if (file.type !== 'application/pdf') {
@@ -546,8 +549,6 @@ export default function BooksCreate({
         }
     };
 
-    console.log(subcategories)
-
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -577,9 +578,15 @@ export default function BooksCreate({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const normalizedProgram = (data.program ?? '').trim();
+        if (normalizedProgram !== '' && !['Cambodia', 'American'].includes(normalizedProgram)) {
+            setError('program', 'Program must be Cambodia or American.');
+            return;
+        }
         if (isEbook && !data.pdf_url) {
-            setErrors((prev) => ({ ...prev, pdf_url: undefined }));
-            setPdfFileError(null);
+            setError('pdf_url', t.pdfFileError || 'Please upload a PDF file.');
+            setPdfFileError(t.pdfFileError || 'Please upload a PDF file.');
+            return;
         }
         post(route('books.store'), {
             forceFormData: true,
@@ -1455,10 +1462,12 @@ export default function BooksCreate({
                                     previewUrl={coverPreviewUrl}
                                     onPreviewClick={() => setIsCoverModalOpen(true)}
                                     error={errors.cover}
+                                    fileError={coverFileError}
                                     helperText={t.coverHelper}
                                     onRemove={() => {
                                         setData('cover', null);
                                         setCoverPreviewUrl(null);
+                                        setCoverFileError(null);
                                     }}
                                     selectedFileName={data.cover?.name}
                                 />
@@ -1485,7 +1494,6 @@ export default function BooksCreate({
                                             setPdfFileError(null);
                                         }}
                                         fileError={pdfFileError}
-                                        required
                                     />
                                     {/* PDF max size message below PDF area */}
                                     <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">

@@ -343,6 +343,8 @@ export default function CampusesIndex({
                 create: route("campuses.create"),
                 show: (id) => route("campuses.show", id),
                 edit: (id) => route("campuses.edit", id),
+                export: route("campuses.export"),
+                import: route("campuses.import"),
             }}
             flash={flash}
             isSuperLibrarian={isSuperLibrarian}
