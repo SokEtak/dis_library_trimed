@@ -97,7 +97,7 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: t.title,
+            title: "បញ្ជីការខ្ចីសៀវភៅ",
             href: route("bookloans.index"),
         },
         {

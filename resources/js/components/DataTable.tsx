@@ -382,7 +382,7 @@ function DataTable<T extends DataItem>({
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
-                                            <p>Add new {resourceName.slice(0, -1)}</p>
+                                            <p>បន្ថែម{resourceName.slice(0, -1)}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>

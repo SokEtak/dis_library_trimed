@@ -103,5 +103,9 @@ Route::post('/library/{book}/loan-requests', [BookLoanRequestController::class, 
     ->middleware('auth')
     ->name('library.loan-requests.store');
 
+Route::patch('/library/loan-requests/{loanRequest}/cancel', [BookLoanRequestController::class, 'cancel'])
+    ->middleware('auth')
+    ->name('library.loan-requests.cancel');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

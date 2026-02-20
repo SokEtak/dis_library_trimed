@@ -70,6 +70,8 @@ interface AuthUser {
 interface LoanRequest {
     id: number;
     status: 'pending' | 'approved' | 'rejected';
+    approver_id?: number | null;
+    canceled_by_requester?: boolean;
     decided_at?: string | null;
 }
 
@@ -119,8 +121,11 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({ show: false, message: '' });
     const [loading, setLoading] = useState(false);
     const [loanRequestStatus, setLoanRequestStatus] = useState<LoanRequest['status'] | null>(loanRequest?.status ?? null);
+    const [loanRequestId, setLoanRequestId] = useState<number | null>(loanRequest?.id ?? null);
+    const [loanRequestCanceledByRequester, setLoanRequestCanceledByRequester] = useState<boolean>(Boolean(loanRequest?.canceled_by_requester));
     const [requestingLoan, setRequestingLoan] = useState(false);
-    const lastNotifiedLoanStatusRef = useRef<LoanRequest['status'] | null>(loanRequest?.status ?? null);
+    const lastNotifiedLoanSignatureRef = useRef<string>(`${loanRequest?.status ?? 'none'}:${loanRequest?.canceled_by_requester ? '1' : '0'}`);
+    const lastLocallyUpdatedLoanRequestIdRef = useRef<number | null>(null);
     const currentBookIdRef = useRef<number | undefined>(book?.id);
 
     // Ref for share button/menu
@@ -149,37 +154,40 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
 
     useEffect(() => {
         setLoanRequestStatus(loanRequest?.status ?? null);
-    }, [book?.id, loanRequest?.status]);
+        setLoanRequestId(loanRequest?.id ?? null);
+        setLoanRequestCanceledByRequester(Boolean(loanRequest?.canceled_by_requester));
+    }, [book?.id, loanRequest?.id, loanRequest?.status, loanRequest?.canceled_by_requester]);
 
     useEffect(() => {
         if (currentBookIdRef.current !== book?.id) {
             currentBookIdRef.current = book?.id;
-            lastNotifiedLoanStatusRef.current = loanRequest?.status ?? null;
+            lastNotifiedLoanSignatureRef.current = `${loanRequest?.status ?? 'none'}:${loanRequest?.canceled_by_requester ? '1' : '0'}`;
         }
-    }, [book?.id, loanRequest?.status]);
+    }, [book?.id, loanRequest?.status, loanRequest?.canceled_by_requester]);
 
     useEffect(() => {
-        const previousStatus = lastNotifiedLoanStatusRef.current;
-        if (loanRequestStatus === previousStatus) {
+        const currentSignature = `${loanRequestStatus ?? 'none'}:${loanRequestCanceledByRequester ? '1' : '0'}`;
+
+        if (currentSignature === lastNotifiedLoanSignatureRef.current) {
             return;
         }
 
         if (loanRequestStatus === 'approved') {
             setToast({
                 show: true,
-                message: `សំណើរត្រូវបានអនុម័ត`,
+                message: 'Request approved.',
                 type: 'success',
             });
         } else if (loanRequestStatus === 'rejected') {
             setToast({
                 show: true,
-                message: `សំណើរត្រូវបានបដិសេធ`,
-                type: 'error',
+                message: loanRequestCanceledByRequester ? 'សំណើរត្រូវបានបោះបង់' : 'សំណើរត្រូវបានបដិសេធ',
+                type: loanRequestCanceledByRequester ? 'info' : 'error',
             });
         }
 
-        lastNotifiedLoanStatusRef.current = loanRequestStatus;
-    }, [loanRequestStatus, book?.title]);
+        lastNotifiedLoanSignatureRef.current = currentSignature;
+    }, [loanRequestStatus, loanRequestCanceledByRequester, book?.title]);
 
     useEffect(() => {
         const echoInstance = echo;
@@ -190,15 +198,26 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
 
         const handleStatusUpdate = (event: {
             loanRequest?: {
+                id?: number;
                 book_id?: number;
                 status?: LoanRequest['status'];
+                canceled_by_requester?: boolean;
             };
         }) => {
             if (!book?.id || event.loanRequest?.book_id !== book.id || !event.loanRequest.status) {
                 return;
             }
 
+            if (typeof event.loanRequest.id === 'number' && lastLocallyUpdatedLoanRequestIdRef.current === event.loanRequest.id) {
+                lastLocallyUpdatedLoanRequestIdRef.current = null;
+                return;
+            }
+
+            if (typeof event.loanRequest.id === 'number') {
+                setLoanRequestId(event.loanRequest.id);
+            }
             setLoanRequestStatus(event.loanRequest.status);
+            setLoanRequestCanceledByRequester(Boolean(event.loanRequest.canceled_by_requester));
         };
 
         channel.listen('.book-loan-request.updated', handleStatusUpdate);
@@ -286,13 +305,15 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                 },
             });
 
-            const data = (await response.json()) as { message?: string };
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null };
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to submit loan request.');
             }
 
-            setLoanRequestStatus('pending');
+            setLoanRequestStatus(data.loanRequest?.status ?? 'pending');
+            setLoanRequestId(data.loanRequest?.id ?? null);
+            setLoanRequestCanceledByRequester(Boolean(data.loanRequest?.canceled_by_requester));
             setToast({
                 show: true,
                 message: data.message || 'Loan request submitted.',
@@ -302,6 +323,54 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
             setToast({
                 show: true,
                 message: error instanceof Error ? error.message : 'Failed to submit loan request.',
+                type: 'error',
+            });
+        } finally {
+            setRequestingLoan(false);
+        }
+    };
+
+    const handleCancelLoanRequest = async () => {
+        if (!loanRequestId || requestingLoan) {
+            return;
+        }
+
+        lastLocallyUpdatedLoanRequestIdRef.current = loanRequestId;
+        setRequestingLoan(true);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.cancel', loanRequestId), {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to cancel loan request.');
+            }
+
+            setLoanRequestStatus(data.loanRequest?.status ?? 'rejected');
+            setLoanRequestId(data.loanRequest?.id ?? loanRequestId);
+            setLoanRequestCanceledByRequester(Boolean(data.loanRequest?.canceled_by_requester ?? true));
+            setToast({
+                show: true,
+                message: data.message || 'Request canceled',
+                type: 'info',
+            });
+        } catch (error) {
+            lastLocallyUpdatedLoanRequestIdRef.current = null;
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : 'Failed to cancel loan request.',
                 type: 'error',
             });
         } finally {
@@ -378,14 +447,15 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
     }
 
     const canShowLoanRequestButton = canRequestLoan && book.type === 'physical';
+    const isPendingLoanRequest = loanRequestStatus === 'pending';
     const loanRequestLabel =
-        loanRequestStatus === 'pending'
-            ? 'កំពុងដាក់សំណើរ...'
+        isPendingLoanRequest
+            ? 'បោះបង់សំណើរ'
             : loanRequestStatus === 'approved'
               ? 'សំណើរត្រូវបានអនុម័ត'
               : 'ដាក់សំណើរ';
     const shouldDisableLoanRequestButton =
-        requestingLoan || loanRequestStatus === 'pending' || loanRequestStatus === 'approved' || !book.is_available;
+        requestingLoan || (isPendingLoanRequest ? false : loanRequestStatus === 'approved' || !book.is_available);
 
     const renderContributorSection = () => {
         if (!book.user) return null;
@@ -471,7 +541,7 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                         </h4>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <DetailItem label={translations[language].campus} value={book.campus?.name} index={index++} />
+                            {/* <DetailItem label={translations[language].campus} value={book.campus?.name} index={index++} /> */}
                             <DetailItem label={translations[language].program} value={book.program} index={index++} />
                             <DetailItem label={translations[language].bookcase} value={book.bookcase?.code} index={index++} />
                             <DetailItem label={translations[language].shelf} value={book.shelf?.code} index={index++} />
@@ -816,12 +886,16 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                                     {canShowLoanRequestButton && (
                                         <button
                                             type="button"
-                                            onClick={handleLoanRequest}
-                                            className="w-full transform rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-base font-bold text-white shadow-lg shadow-emerald-600/40 transition-all hover:scale-[1.01] hover:shadow-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:px-6 sm:py-3 sm:text-lg"
+                                            onClick={isPendingLoanRequest ? handleCancelLoanRequest : handleLoanRequest}
+                                            className={`w-full transform rounded-xl px-4 py-2.5 text-base font-bold text-white transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:px-6 sm:py-3 sm:text-lg ${
+                                                isPendingLoanRequest
+                                                    ? 'bg-gradient-to-r from-rose-600 to-red-600 shadow-lg shadow-rose-600/40 hover:scale-[1.01] hover:shadow-red-600/40 focus-visible:ring-rose-500'
+                                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-lg shadow-emerald-600/40 hover:scale-[1.01] hover:shadow-emerald-500/50 focus-visible:ring-emerald-500'
+                                            }`}
                                             disabled={shouldDisableLoanRequestButton}
                                             aria-label={loanRequestLabel}
                                         >
-                                            {requestingLoan ? 'កំពុង​ស្នើរសុំ' : loanRequestLabel}
+                                            {requestingLoan ? (isPendingLoanRequest ? 'កំពុងបោះបង់សំណើរ...' : 'កំពុងដាក់សំណើរ...') : loanRequestLabel}
                                         </button>
                                     )}
                                 </div>

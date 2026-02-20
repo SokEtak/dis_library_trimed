@@ -18,7 +18,7 @@ const translations: Translations = {
         lastModified: "កែប្រែចុងក្រោយ",
         returnedAt: "បានសងនៅថ្ងៃ",
         edit: "កែសម្រួល",
-        editTooltip: "កែសម្រួលការខ្ចីស៖ាវភៅនេះ",
+        editTooltip: "កែសម្រួលការខ្ចីសៀវភៅនេះ",
         delete: "លុប",
         deleteTooltip: "លុបការសៀវភៅសៀវភៅេះ",
         back: "ត្រឡប់",

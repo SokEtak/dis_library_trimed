@@ -90,6 +90,7 @@ interface LoanRequest {
     requester_id: number;
     requester_name: string | null;
     status: "pending" | "approved" | "rejected";
+    canceled_by_requester?: boolean;
     created_at: string | null;
 }
 
@@ -597,8 +598,7 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [bookLoanRows, setBookLoanRows] = useState<BookLoan[]>(bookloans || []);
     const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(loanRequests || []);
-    const [activeLoanRequest, setActiveLoanRequest] = useState<LoanRequest | null>(loanRequests?.[0] ?? null);
-    const [decisionProcessing, setDecisionProcessing] = useState(false);
+    const [decisionProcessingRequestId, setDecisionProcessingRequestId] = useState<number | null>(null);
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: "success" | "error" | "info" }>({ show: false, message: "" });
     const lastLocallyDecidedRequestIdRef = useRef<number | null>(null);
 
@@ -614,12 +614,6 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
     useEffect(() => {
         setPendingLoanRequests(loanRequests || []);
     }, [loanRequests]);
-
-    useEffect(() => {
-        if (!activeLoanRequest && pendingLoanRequests.length > 0) {
-            setActiveLoanRequest(pendingLoanRequests[0]);
-        }
-    }, [pendingLoanRequests, activeLoanRequest]);
 
     useEffect(() => {
         const echoInstance = echo;
@@ -654,19 +648,20 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
             } else if (event.loanRequest.status === "approved") {
                 setToast({
                     show: true,
-                    message: `${event.loanRequest.requester_name || "User"} request approved.`,
+                    message: `${event.loanRequest.requester_name || "User"} បានអនុម័តសំណើរ`,
                     type: "success",
                 });
             } else if (event.loanRequest.status === "rejected") {
                 setToast({
                     show: true,
-                    message: `${event.loanRequest.requester_name || "User"} request rejected.`,
-                    type: "error",
+                    message: event.loanRequest.canceled_by_requester
+                        ? `${event.loanRequest.requester_name || "User"} បានបោះបង់សំណើរ`
+                        : `${event.loanRequest.requester_name || "User"} request rejected.`,
+                    type: event.loanRequest.canceled_by_requester ? "info" : "error",
                 });
             }
 
             setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== event.loanRequest?.id));
-            setActiveLoanRequest((currentRequest) => (currentRequest?.id === event.loanRequest?.id ? null : currentRequest));
         };
 
         channel.listen(".book-loan-request.created", handleCreatedEvent);
@@ -681,7 +676,7 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
 
     useEffect(() => {
         const intervalId = window.setInterval(() => {
-            if (decisionProcessing || processing) {
+            if (decisionProcessingRequestId !== null || processing) {
                 return;
             }
 
@@ -693,7 +688,7 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
         }, 1500);
 
         return () => window.clearInterval(intervalId);
-    }, [decisionProcessing, processing]);
+    }, [decisionProcessingRequestId, processing]);
 
     const globalFilterFn = (row: Row<BookLoan>, columnId: string, filterValue: string) => {
         const search = String(filterValue).toLowerCase().trim();
@@ -812,18 +807,18 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
         }
     };
 
-    const handleLoanRequestDecision = async (decision: "approved" | "rejected") => {
-        if (!activeLoanRequest || decisionProcessing) {
+    const handleLoanRequestDecision = async (loanRequest: LoanRequest, decision: "approved" | "rejected") => {
+        if (decisionProcessingRequestId !== null) {
             return;
         }
 
-        lastLocallyDecidedRequestIdRef.current = activeLoanRequest.id;
-        setDecisionProcessing(true);
+        lastLocallyDecidedRequestIdRef.current = loanRequest.id;
+        setDecisionProcessingRequestId(loanRequest.id);
 
         try {
             const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") ?? "";
 
-            const response = await fetch(route("bookloans.requests.decide", activeLoanRequest.id), {
+            const response = await fetch(route("bookloans.requests.decide", loanRequest.id), {
                 method: "PATCH",
                 credentials: "same-origin",
                 headers: {
@@ -860,8 +855,7 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
                 type: decision === "approved" ? "success" : "error",
             });
 
-            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== activeLoanRequest.id));
-            setActiveLoanRequest(null);
+            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== loanRequest.id));
         } catch (error) {
             setToast({
                 show: true,
@@ -869,7 +863,7 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
                 type: "error",
             });
         } finally {
-            setDecisionProcessing(false);
+            setDecisionProcessingRequestId(null);
         }
     };
 
@@ -906,43 +900,50 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
                 isSuperLibrarian={false}
                 globalFilterFn={globalFilterFn}
             />
-            <AlertDialog open={!!activeLoanRequest} onOpenChange={() => {}}>
-                <AlertDialogContent className={commonStyles.gradientBg}>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>សំណើរខ្ចីសៀវភៅ</AlertDialogTitle>
-                        <AlertDialogDescription className="text-base leading-relaxed">
-                {activeLoanRequest && (
-                    <span>
-                        <span className="font-semibold text-blue-400">
-                            {activeLoanRequest.requester_name || "A user"}
-                        </span>{" "}
-                        បានស្នើរសុំខ្ចីសៀវភៅ ចំណងជើង{" "}
-                        <span className="font-semibold text-amber-400">
-                            {activeLoanRequest.book_title || "this book"}
-                        </span>
-                        {/* ។តើអ្នកចង់យល់ព្រមឬបដិសេធសំណើរនេះ? */}
-                    </span>
-    )}
-</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className={`${commonStyles.outlineButton} border`}
-                            onClick={() => handleLoanRequestDecision("rejected")}
-                            disabled={decisionProcessing}
-                        >
-                            បដិសេធ
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className={commonStyles.indigoButton}
-                            onClick={() => handleLoanRequestDecision("approved")}
-                            disabled={decisionProcessing}
-                        >
-                            យល់ព្រម
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {pendingLoanRequests.length > 0 && (
+                <div className="pointer-events-none fixed top-4 right-4 z-50 flex w-[min(92vw,24rem)] flex-col gap-3">
+                    {pendingLoanRequests.map((requestItem) => {
+                        const isProcessing = decisionProcessingRequestId === requestItem.id;
+
+                        return (
+                            <div
+                                key={requestItem.id}
+                                className="pointer-events-auto rounded-xl border border-indigo-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-indigo-700 dark:bg-gray-900/95"
+                            >
+                                <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">
+                                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">
+                                        {requestItem.requester_name || "A user"}
+                                    </span>{" "}
+                                    បានស្នើរសុំខ្ចីសៀវភៅ ចំណងជើង{" "}
+                                    <span className="font-semibold text-amber-600 dark:text-amber-300">
+                                        {requestItem.book_title || "this book"}
+                                    </span>
+                                        {/* ។ តើអ្នកចង់អនុម័តឬបដិសេធសំណើនេះ? */}
+                                </p>
+                                <div className="mt-3 flex items-center justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className={commonStyles.outlineButton}
+                                        onClick={() => handleLoanRequestDecision(requestItem, "rejected")}
+                                        disabled={decisionProcessingRequestId !== null}
+                                    >
+                                        ទេ
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        className={commonStyles.indigoButton}
+                                        onClick={() => handleLoanRequestDecision(requestItem, "approved")}
+                                        disabled={decisionProcessingRequestId !== null}
+                                    >
+                                        {isProcessing ? "កំពុងដំណើរការ..." : "យល់ព្រម"}
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent className={commonStyles.gradientBg}>
                     <AlertDialogHeader>

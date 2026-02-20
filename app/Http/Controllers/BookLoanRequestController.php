@@ -137,6 +137,48 @@ class BookLoanRequestController extends Controller
         ]);
     }
 
+    public function cancel(Request $request, BookLoanRequest $loanRequest): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->hasRole('regular-user')) {
+            abort(403, 'Only regular users can cancel requests.');
+        }
+
+        DB::transaction(function () use ($loanRequest, $user): void {
+            $lockedRequest = BookLoanRequest::query()
+                ->whereKey($loanRequest->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedRequest->requester_id !== (int) $user->id) {
+                abort(403, 'You can only cancel your own request.');
+            }
+
+            if ($lockedRequest->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'request' => 'Only pending requests can be canceled.',
+                ]);
+            }
+
+            // Keep request history, but mark this as a requester-side cancellation.
+            $lockedRequest->update([
+                'status' => 'rejected',
+                'approver_id' => null,
+                'decided_at' => now(),
+            ]);
+        });
+
+        $loanRequest->refresh()->load(['book:id,title', 'requester:id,name', 'approver:id,name']);
+
+        broadcast(new BookLoanRequestUpdated($loanRequest));
+
+        return response()->json([
+            'message' => 'Loan request canceled.',
+            'loanRequest' => $this->loanRequestPayload($loanRequest),
+        ]);
+    }
+
     private function loanRequestPayload(BookLoanRequest $loanRequest): array
     {
         return [
@@ -146,6 +188,8 @@ class BookLoanRequestController extends Controller
             'requester_id' => $loanRequest->requester_id,
             'requester_name' => $loanRequest->requester?->name,
             'status' => $loanRequest->status,
+            'approver_id' => $loanRequest->approver_id,
+            'canceled_by_requester' => $loanRequest->status === 'rejected' && ! $loanRequest->approver_id,
             'decided_at' => optional($loanRequest->decided_at)->toIso8601String(),
             'created_at' => optional($loanRequest->created_at)->toIso8601String(),
         ];
@@ -173,3 +217,4 @@ class BookLoanRequestController extends Controller
         ];
     }
 }
+

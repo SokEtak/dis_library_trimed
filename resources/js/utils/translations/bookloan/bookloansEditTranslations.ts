@@ -6,7 +6,7 @@ const translations: Translations = {
         returnDate: "កាលបរិច្ឆេទត្រឡប់",
         returnDateTooltip: "ជ្រើសរើសកាលបរិច្ឆេទត្រឡប់សម្រាប់ការខ្ចីសៀវភៅ",
         book: "សៀវភៅ",
-        bookTooltip: "ស្វែងរក និងជ្រើសរើសស៖ាវភៅសម្រាប់ការខ្ចីនេះ",
+        bookTooltip: "ស្វែងរក និងជ្រើសរើសសៀវភៅសម្រាប់ការខ្ចីនេះ",
         bookPlaceholder: "ជ្រើសរើសសៀវភៅ",
         bookEmpty: "រកមិនឃើញសៀវភៅទេ",
         loaner: "អ្នកខ្ចី",

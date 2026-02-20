@@ -176,6 +176,8 @@ class LibraryController extends Controller
             $loanRequest = $latestRequest ? [
                 'id' => $latestRequest->id,
                 'status' => $latestRequest->status,
+                'approver_id' => $latestRequest->approver_id,
+                'canceled_by_requester' => $latestRequest->status === 'rejected' && ! $latestRequest->approver_id,
                 'decided_at' => optional($latestRequest->decided_at)->toIso8601String(),
             ] : null;
         }

@@ -27,6 +27,7 @@ class BookLoanRequestUpdated implements ShouldBroadcastNow
             'approver_id' => $loanRequest->approver_id,
             'approver_name' => $loanRequest->approver?->name,
             'status' => $loanRequest->status,
+            'canceled_by_requester' => $loanRequest->status === 'rejected' && ! $loanRequest->approver_id,
             'decided_at' => optional($loanRequest->decided_at)->toIso8601String(),
         ];
     }
