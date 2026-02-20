@@ -167,13 +167,13 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
         if (loanRequestStatus === 'approved') {
             setToast({
                 show: true,
-                message: `${book?.title ?? 'Book'} request approved.`,
+                message: `សំណើរត្រូវបានអនុម័ត`,
                 type: 'success',
             });
         } else if (loanRequestStatus === 'rejected') {
             setToast({
                 show: true,
-                message: `${book?.title ?? 'Book'} request rejected.`,
+                message: `សំណើរត្រូវបានបដិសេធ`,
                 type: 'error',
             });
         }
@@ -355,7 +355,7 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                 message:
                     translations[language].language === 'en'
                         ? 'Failed to download file.'
-                        : 'ការទាញយកបានបរាជ័យ។',
+                        : 'ការទាញយកបរាជ័យ។',
                 type: 'error',
             });
         } finally {
@@ -380,10 +380,10 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
     const canShowLoanRequestButton = canRequestLoan && book.type === 'physical';
     const loanRequestLabel =
         loanRequestStatus === 'pending'
-            ? 'Request Pending'
+            ? 'កំពុងដាក់សំណើរ...'
             : loanRequestStatus === 'approved'
-              ? 'Request Approved'
-              : 'Request to Borrow';
+              ? 'សំណើរត្រូវបានអនុម័ត'
+              : 'ដាក់សំណើរ';
     const shouldDisableLoanRequestButton =
         requestingLoan || loanRequestStatus === 'pending' || loanRequestStatus === 'approved' || !book.is_available;
 
@@ -489,7 +489,12 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
             <Head title={book.title} />
             <div className="relative min-h-screen bg-[#F6F9FC] text-[#0f1115] transition-colors duration-300 dark:bg-[#0b0d12] dark:text-[#EDEDEC]">
                 {/* Toast */}
-                <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+                <Toast
+                    show={toast.show}
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast((current) => ({ ...current, show: false }))}
+                />
 
                 {/* Ambient background - keep but lighten on mobile for perf */}
                 <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -816,7 +821,7 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                                             disabled={shouldDisableLoanRequestButton}
                                             aria-label={loanRequestLabel}
                                         >
-                                            {requestingLoan ? 'Sending request...' : loanRequestLabel}
+                                            {requestingLoan ? 'កំពុង​ស្នើរសុំ' : loanRequestLabel}
                                         </button>
                                     )}
                                 </div>

@@ -879,7 +879,12 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
 
     return (
         <>
-            <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+            <Toast
+                show={toast.show}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast((current) => ({ ...current, show: false }))}
+            />
             <DataTable
                 data={bookLoanRows || []}
                 columns={columns}
@@ -904,12 +909,21 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
             <AlertDialog open={!!activeLoanRequest} onOpenChange={() => {}}>
                 <AlertDialogContent className={commonStyles.gradientBg}>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Borrow Request</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {activeLoanRequest
-                                ? `${activeLoanRequest.requester_name || "A user"} request to borrow ${activeLoanRequest.book_title || "this book"}.`
-                                : ""}
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>សំណើរខ្ចីសៀវភៅ</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base leading-relaxed">
+                {activeLoanRequest && (
+                    <span>
+                        <span className="font-semibold text-blue-400">
+                            {activeLoanRequest.requester_name || "A user"}
+                        </span>{" "}
+                        បានស្នើរសុំខ្ចីសៀវភៅ ចំណងជើង{" "}
+                        <span className="font-semibold text-amber-400">
+                            {activeLoanRequest.book_title || "this book"}
+                        </span>
+                        {/* ។តើអ្នកចង់យល់ព្រមឬបដិសេធសំណើរនេះ? */}
+                    </span>
+    )}
+</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
@@ -917,14 +931,14 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
                             onClick={() => handleLoanRequestDecision("rejected")}
                             disabled={decisionProcessing}
                         >
-                            No
+                            បដិសេធ
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className={commonStyles.indigoButton}
                             onClick={() => handleLoanRequestDecision("approved")}
                             disabled={decisionProcessing}
                         >
-                            Yes
+                            យល់ព្រម
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

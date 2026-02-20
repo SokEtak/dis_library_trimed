@@ -158,7 +158,7 @@ class LibraryController extends Controller
     /**
      * Show a single book and its details.
      */
-    public function show(Book $book)
+    public function show(Request $request, Book $book)
     {
         // Fetch related books logic
         $relatedBooks = Book::relatedBooks($book);
@@ -180,8 +180,9 @@ class LibraryController extends Controller
             ] : null;
         }
 
-        // Increment view count if the user is not the book's owner
-        if ($book->user_id !== Auth::id()) {
+        // Count only full page visits, not Inertia partial reload polling.
+        $isPartialInertiaReload = $request->headers->has('X-Inertia-Partial-Data');
+        if (! $isPartialInertiaReload && $book->user_id !== Auth::id()) {
             $book->increment('view');
         }
 

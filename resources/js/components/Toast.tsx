@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ToastProps {
   message: string;
@@ -8,12 +8,21 @@ interface ToastProps {
 }
 
 export default function Toast({ message, show, onClose, type = 'info' }: ToastProps) {
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (show) {
-      const timer = setTimeout(onClose, 2500);
-      return () => clearTimeout(timer);
+      const timer = window.setTimeout(() => {
+        onCloseRef.current();
+      }, 2500);
+
+      return () => window.clearTimeout(timer);
     }
-  }, [show, onClose]);
+  }, [show, message, type]);
 
   if (!show) return null;
 
