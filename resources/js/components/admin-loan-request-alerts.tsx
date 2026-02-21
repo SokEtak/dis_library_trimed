@@ -1,7 +1,8 @@
-import Toast from '@/components/Toast';
+﻿import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/button';
 import echo from '@/lib/echo';
 import { router, usePage } from '@inertiajs/react';
+import { el } from 'date-fns/locale';
 import { BellRing } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -76,36 +77,40 @@ export default function AdminLoanRequestAlerts() {
 
     const formatRelativeAge = (createdAt: string | null) => {
         if (!createdAt) {
-            return 'just now';
+            return 'áž‘áž¾áž”ážáŸ‚';
         }
 
         const createdAtMs = new Date(createdAt).getTime();
 
         if (Number.isNaN(createdAtMs)) {
-            return 'just now';
+            return 'Error';
         }
 
         const elapsedSeconds = Math.max(0, Math.floor((nowMs - createdAtMs) / 1000));
 
+        if (elapsedSeconds < 10) {
+            return 'អំបាញ់មិញ';
+        }
+
         if (elapsedSeconds < 60) {
-            return `${elapsedSeconds} sec ago`;
+            return `${elapsedSeconds}  វិនាទីមុន`;
         }
 
         const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
         if (elapsedMinutes < 60) {
-            return `${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} ago`;
+            return `${elapsedMinutes}  នាទីមុន`;
         }
 
         const elapsedHours = Math.floor(elapsedMinutes / 60);
 
         if (elapsedHours < 24) {
-            return `${elapsedHours} hour${elapsedHours === 1 ? '' : 's'} ago`;
+            return `${elapsedHours}  ម៉ោងមុន`;
         }
 
         const elapsedDays = Math.floor(elapsedHours / 24);
 
-        return `${elapsedDays} day${elapsedDays === 1 ? '' : 's'} ago`;
+        return `${elapsedDays} ថ្ងៃមុន`;
     };
 
     const markRequestHighlighted = (requestId: number) => {
@@ -272,7 +277,7 @@ export default function AdminLoanRequestAlerts() {
                             >
                                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
                                     <BellRing className={`h-4 w-4 ${isHighlighted ? 'animate-pulse text-amber-500 dark:text-amber-400' : ''}`} />
-                                    សំណើរ​សុំ​ខ្ចី​សៀវភៅ​
+                                    សំណើសុំខ្ចីសៀវភៅ
                                     <span className="ml-auto normal-case font-medium tracking-normal text-[11px] text-gray-500 dark:text-gray-300">
                                         {formatRelativeAge(requestItem.created_at)}
                                     </span>
@@ -281,7 +286,7 @@ export default function AdminLoanRequestAlerts() {
                                     <span className="font-semibold text-indigo-600 dark:text-indigo-300">
                                         {requestItem.requester_name || 'A user'}
                                     </span>{' '}
-                                    បានដាក់សំណើរដើម្បីខ្ចីសៀវភៅ{' '}
+                                    បានដាក់សំណើដើម្បីខ្ចីសៀវភៅ{' '}
                                     <span className="font-semibold text-amber-600 dark:text-amber-300">
                                         {requestItem.book_title || 'this book'}
                                     </span>
@@ -294,7 +299,7 @@ export default function AdminLoanRequestAlerts() {
                                         onClick={() => handleLoanRequestDecision(requestItem, 'rejected')}
                                         disabled={decisionProcessingRequestId !== null}
                                     >
-                                        {isProcessing ? 'កំពុងដំណើរការ...' : 'ទេ'}
+                                        {isProcessing ? 'កំពុងបដិសេធ...' : 'បដិសេធ'}
                                     </Button>
                                     <Button
                                         type="button"
@@ -302,7 +307,7 @@ export default function AdminLoanRequestAlerts() {
                                         onClick={() => handleLoanRequestDecision(requestItem, 'approved')}
                                         disabled={decisionProcessingRequestId !== null}
                                     >
-                                        {isProcessing ? 'កំពុងដំណើរការ...' : 'យល់ព្រម'}
+                                        {isProcessing ? 'កំពុងដំណើរការ...' : 'អនុម័ត'}
                                     </Button>
                                 </div>
                             </div>
