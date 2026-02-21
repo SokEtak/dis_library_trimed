@@ -1,5 +1,6 @@
 import { type SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import echo from '@/lib/echo';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
   BookOpenIcon,
   LayoutDashboardIcon,
@@ -11,7 +12,7 @@ import {
   LogOut,
   LogIn,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 
@@ -129,14 +130,52 @@ export default function Welcome() {
   const { auth, bookCount, ebookCount, userCount, canLogin, canRegister } =
     usePage<WelcomeProps>().props;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const reloadTimerRef = useRef<number | null>(null);
 
-  const isRegularUser = auth.user?.roles.includes('regular-user');
   const isStaffOrAdmin =
     auth.user && (auth.user.roles.includes('staff') || auth.user.roles.includes('admin'));
   const totalLibraryItems = bookCount + ebookCount;
   const animationDuration = 2000;
 
   const handleNavigation = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    const echoInstance = echo;
+    if (!echoInstance) {
+      return;
+    }
+
+    const publicSummaryChannel = 'public.summary';
+    const channel = echoInstance.channel(publicSummaryChannel);
+
+    const handleSummaryUpdated = () => {
+      if (reloadTimerRef.current !== null) {
+        return;
+      }
+
+      reloadTimerRef.current = window.setTimeout(() => {
+        reloadTimerRef.current = null;
+
+        router.reload({
+          only: ['bookCount', 'ebookCount', 'userCount'],
+          preserveScroll: true,
+          preserveState: true,
+        });
+      }, 250);
+    };
+
+    channel.listen('.dashboard.summary.updated', handleSummaryUpdated);
+
+    return () => {
+      if (reloadTimerRef.current !== null) {
+        window.clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+
+      channel.stopListening('.dashboard.summary.updated');
+      echoInstance.leave(publicSummaryChannel);
+    };
+  }, []);
 
   return (
     <>

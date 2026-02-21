@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\DashboardSummaryUpdated;
 use App\Http\Requests\BookLoan\BookLoanRequest;
 use App\Models\Book;
 use App\Models\BookLoan;
@@ -81,6 +82,7 @@ class BookLoanController extends Controller
         BookLoan::create($validated);
 
         Book::where('id', $validated['book_id'])->update(['is_available' => false]);
+        broadcast(new DashboardSummaryUpdated('book-loan.store'));
 
         return redirect()
             ->route('bookloans.index')
@@ -135,6 +137,7 @@ class BookLoanController extends Controller
         if (in_array($bookloan->status, ['canceled', 'returned'])) {
             Book::where('id', $bookloan->book_id)->update(['is_available' => true]);
         }
+        broadcast(new DashboardSummaryUpdated('book-loan.update'));
 
         return redirect()
             ->route('bookloans.show', $bookloan)
@@ -150,6 +153,7 @@ class BookLoanController extends Controller
             $bookloan->is_deleted
                 ? $bookloan->delete()
                 : $bookloan->update(['is_deleted' => true]);
+            broadcast(new DashboardSummaryUpdated('book-loan.destroy'));
 
             return redirect()
                 ->route('bookloans.index')
@@ -204,9 +208,17 @@ class BookLoanController extends Controller
             if ($result['failed'] > 0) {
                 $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
 
+                if (($result['created'] ?? 0) > 0 || ($result['updated'] ?? 0) > 0) {
+                    broadcast(new DashboardSummaryUpdated('book-loan.import'));
+                }
+
                 return redirect()->route('bookloans.index')->with('flash', [
                     'error' => $message.' '.$sampleErrors,
                 ]);
+            }
+
+            if (($result['created'] ?? 0) > 0 || ($result['updated'] ?? 0) > 0) {
+                broadcast(new DashboardSummaryUpdated('book-loan.import'));
             }
 
             return redirect()->route('bookloans.index')->with('flash', [

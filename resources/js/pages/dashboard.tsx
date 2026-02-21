@@ -4,12 +4,14 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminLoanRequestAlerts from '@/components/admin-loan-request-alerts';
 import { dashboardCards } from '@/config/dashboard-cards';
+import echo from '@/lib/echo';
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Library, School, Package, Layers, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
+import { useEffect, useRef } from 'react';
 
 interface DashboardProps {
   auth: { user: { name: string; email: string; roles: string[] } };
@@ -197,6 +199,45 @@ export default function Page() {
   const { auth, bookStats, assetStats, schoolStats, userStats, extraStats } = usePage<DashboardProps>().props;
   const isAdmin = auth.user.roles.includes('admin');
   const stats = { bookStats, assetStats, schoolStats, userStats, extraStats };
+  const reloadTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const echoInstance = echo;
+    if (!echoInstance) {
+      return;
+    }
+
+    const dashboardChannel = 'dashboard.summary';
+    const channel = echoInstance.private(dashboardChannel);
+
+    const handleSummaryUpdated = () => {
+      if (reloadTimerRef.current !== null) {
+        return;
+      }
+
+      reloadTimerRef.current = window.setTimeout(() => {
+        reloadTimerRef.current = null;
+
+        router.reload({
+          only: ['bookStats', 'assetStats', 'schoolStats', 'userStats', 'extraStats'],
+          preserveScroll: true,
+          preserveState: true,
+        });
+      }, 200);
+    };
+
+    channel.listen('.dashboard.summary.updated', handleSummaryUpdated);
+
+    return () => {
+      if (reloadTimerRef.current !== null) {
+        window.clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+
+      channel.stopListening('.dashboard.summary.updated');
+      echoInstance.leave(dashboardChannel);
+    };
+  }, []);
 
   // Evaluate dynamic values
   const evaluatedCards = dashboardCards.map(card => ({

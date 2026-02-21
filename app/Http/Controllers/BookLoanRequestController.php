@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\BookLoanRequestCreated;
 use App\Events\BookLoanRequestUpdated;
+use App\Events\DashboardSummaryUpdated;
 use App\Models\Book;
 use App\Models\BookLoan;
 use App\Models\BookLoanRequest;
@@ -54,6 +55,7 @@ class BookLoanRequestController extends Controller
         ])->load(['book:id,title', 'requester:id,name']);
 
         broadcast(new BookLoanRequestCreated($loanRequest));
+        broadcast(new DashboardSummaryUpdated('book-loan-request.store'));
 
         return response()->json([
             // 'message' => 'Loan request sent to the library admin.',
@@ -127,6 +129,7 @@ class BookLoanRequestController extends Controller
         $createdBookLoan?->load(['book:id,title', 'user:id,name']);
 
         broadcast(new BookLoanRequestUpdated($loanRequest));
+        broadcast(new DashboardSummaryUpdated('book-loan-request.decide'));
 
         return response()->json([
             'message' => $decision === 'approved'
@@ -172,6 +175,7 @@ class BookLoanRequestController extends Controller
         $loanRequest->refresh()->load(['book:id,title', 'requester:id,name', 'approver:id,name']);
 
         broadcast(new BookLoanRequestUpdated($loanRequest));
+        broadcast(new DashboardSummaryUpdated('book-loan-request.cancel'));
 
         return response()->json([
             'message' => 'Loan request canceled.',
@@ -217,4 +221,3 @@ class BookLoanRequestController extends Controller
         ];
     }
 }
-
