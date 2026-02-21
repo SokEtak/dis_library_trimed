@@ -98,7 +98,7 @@ const t = translations.kh;
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: t.go_back, href: route('books.index') },
-    { title: 'Edit Book', href: '' },
+    { title: 'កែប្រែ', href: '' },
 ];
 
 // Error Boundary Component
@@ -616,18 +616,18 @@ export default function BooksEdit({
             setError('program', 'Program must be Cambodia or American.');
             return;
         }
-        if (isEbook && !data.pdf_url) {
+        if (isEbook && !data.pdf_url && !book.pdf_url) {
             setError('pdf_url', t.pdfFileError || 'Please upload a PDF file.');
             setPdfFileError(t.pdfFileError || 'Please upload a PDF file.');
             return;
         }
         // Build payload and omit file fields when they're null so the existing
         // cover/pdf on the server remain unchanged if the user didn't provide a new one.
-        const payload: any = {};
-        Object.keys(data).forEach((key) => {
+        const payload: Partial<typeof data> = {};
+        (Object.keys(data) as Array<keyof typeof data>).forEach((key) => {
             // If cover or pdf_url were left as null/undefined, don't include them
             // so the server retains the existing storage URL for those fields.
-            const value = (data as any)[key];
+            const value = data[key];
             if ((key === 'cover' || key === 'pdf_url') && (value === null || value === undefined)) return;
             payload[key] = value;
         });
@@ -655,10 +655,10 @@ export default function BooksEdit({
     return (
         <ErrorBoundary>
             <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title={isEbook ? 'Edit E-Book' : 'Edit Physical Book'} />
+                <Head title={isEbook ? 'កែប្រែសៀវភៅអេឡិចត្រូនិច' : 'កែប្រែសៀវភៅរូបវន្ត'} />
                 <div className="max-w-auto p-2 sm:p-6 lg:p-8">
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                        <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{isEbook ? 'Edit E-Book' : 'Edit Physical Book'}</h1>
+                        <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{isEbook ? 'កែប្រែសៀវភៅអេឡិចត្រូនិច' : 'កែប្រែសៀវភៅរូបវន្ត'}</h1>
 
                         {showErrorAlert && (Object.keys(errors).length > 0 || flash?.error) && (
                             <Alert className="mb-6 rounded-lg border border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20">
@@ -1546,9 +1546,9 @@ export default function BooksEdit({
                                         type="submit"
                                         disabled={processing}
                                         className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                                        aria-label={t.saveBook}
+                                        aria-label="Update book"
                                     >
-                                        {processing ? 'Updating...' : 'Update Book'}
+                                        {processing ? 'កំពុងកែប្រែ...' : 'រក្សាទុក'}
                                     </Button>
                                     <Button
                                         type="button"

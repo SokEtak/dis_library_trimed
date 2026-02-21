@@ -32,13 +32,15 @@ class UpdateBookRequest extends FormRequest
             'user_id' => $this->input('user_id', Auth::id()),
         ]);
 
-        if ($this->has('published_at') && ! empty($this->published_at)) {
-            $this->merge(['published_at' => (int) $this->published_at]);
+        // Treat empty optional values as null so nullable validation can pass on update.
+        foreach (['program', 'published_at', 'author', 'flip_link', 'isbn', 'subcategory_id', 'grade_id', 'subject_id'] as $field) {
+            if ($this->has($field) && $this->input($field) === '') {
+                $this->merge([$field => null]);
+            }
         }
 
-        // Treat empty select value as null for nullable validation.
-        if ($this->has('program') && $this->input('program') === '') {
-            $this->merge(['program' => null]);
+        if ($this->has('published_at') && ! empty($this->published_at)) {
+            $this->merge(['published_at' => (int) $this->published_at]);
         }
 
         if ($type === 'ebook') {
@@ -59,9 +61,9 @@ class UpdateBookRequest extends FormRequest
             'publisher' => ['sometimes', 'string', 'max:255'],
             'language' => ['sometimes', 'in:en,kh'],
             'program' => ['nullable', 'in:Cambodia,American'],
-            'published_at' => ['sometimes', 'integer', 'digits:4', 'min:1000', 'max:2025'],
-            'author' => ['sometimes', 'string', 'max:255'],
-            'flip_link' => ['sometimes', 'url', 'max:255'],
+            'published_at' => ['nullable', 'integer', 'digits:4', 'min:1000', 'max:2025'],
+            'author' => ['nullable', 'string', 'max:255'],
+            'flip_link' => ['nullable', 'url', 'max:255'],
             'code' => [
                 'sometimes',
                 'string',
@@ -69,7 +71,7 @@ class UpdateBookRequest extends FormRequest
                 Rule::unique('books', 'code')->ignore($bookId),
             ],
             'isbn' => [
-                'sometimes',
+                'nullable',
                 'string',
                 'size:13',
                 Rule::unique('books', 'isbn')->ignore($bookId),
@@ -77,14 +79,14 @@ class UpdateBookRequest extends FormRequest
             'view' => ['sometimes', 'integer', 'min:0'],
             'is_available' => [$isEbook ? 'nullable' : 'required_if:type,physical', 'boolean'],
             'downloadable' => [$isEbook ? 'required' : 'nullable', 'boolean'],
-            'cover' => ['sometimes', 'image', 'mimes:jpeg,png', 'max:5120'],
-            'pdf_url' => [$isEbook ? 'sometimes' : 'nullable', 'mimes:pdf', 'max:30720'],
+            'cover' => ['nullable', 'image', 'mimes:jpeg,png', 'max:5120'],
+            'pdf_url' => ['nullable', 'mimes:pdf', 'max:30720'],
             'category_id' => ['sometimes', 'exists:categories,id'],
-            'subcategory_id' => ['sometimes', 'exists:sub_categories,id'],
+            'subcategory_id' => ['nullable', 'exists:sub_categories,id'],
             'shelf_id' => [$isEbook ? 'nullable' : 'required_if:type,physical', 'exists:shelves,id'],
             'bookcase_id' => [$isEbook ? 'nullable' : 'required_if:type,physical', 'exists:bookcases,id'],
-            'grade_id' => ['sometimes', 'exists:grades,id'],
-            'subject_id' => ['sometimes', 'exists:subjects,id'],
+            'grade_id' => ['nullable', 'exists:grades,id'],
+            'subject_id' => ['nullable', 'exists:subjects,id'],
             'campus_id' => [$isEbook ? 'nullable' : 'required_if:type,physical', 'exists:campuses,id'],
         ];
     }

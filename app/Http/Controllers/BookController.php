@@ -103,7 +103,7 @@ class BookController extends Controller
     {
         return Inertia::render('Books/Create', [
             'categories' => Category::all(['id', 'name']),
-            'subcategories' => SubCategory::all(['id', 'name']),
+            'subcategories' => SubCategory::all(['id', 'name', 'category_id']),
             'shelves' => $this->getShelvesForCampus(),
             'bookcases' => $this->getBookcasesForCampus(),
             'grades' => Grade::all(['id', 'name']),
@@ -267,12 +267,12 @@ class BookController extends Controller
 
         return Inertia::render('Books/Edit', [
             'book' => $book,
-            'categories' => Category::all(),
-            'subcategory' => SubCategory::all(),
+            'categories' => Category::all(['id', 'name']),
+            'subcategories' => SubCategory::all(['id', 'name', 'category_id']),
             'shelves' => $this->getShelvesForCampus(),
             'bookcases' => $this->getBookcasesForCampus(),
-            'grades' => Grade::all(),
-            'subjects' => Subject::all(),
+            'grades' => Grade::all(['id', 'name']),
+            'subjects' => Subject::all(['id', 'name']),
         ]);
     }
 
@@ -292,6 +292,10 @@ class BookController extends Controller
         Log::info('Book update request payload (raw):', $request->all());
 
         $validated = $request->validated();
+        // Preserve current cover when no new cover file is uploaded.
+        if (! $request->hasFile('cover')) {
+            unset($validated['cover']);
+        }
 
         try {
             // Handle cover upload
@@ -389,7 +393,11 @@ class BookController extends Controller
                 ? 'សៀវភៅត្រូវបានកែប្រែដោយជោគជ័យ!'
                 : 'Book updated successfully!';
 
-            return redirect()->route('books.index')->with('flash', ['message' => $message]);
+            $redirectRoute = $request->boolean('is_continue')
+                ? route('books.edit', $book)
+                : route('books.index');
+
+            return redirect()->to($redirectRoute)->with('flash', ['message' => $message]);
 
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('Database error during book update', [

@@ -51,6 +51,7 @@ import {
     Filter as FilterIcon,
     Library,
     Loader2,
+    Pencil,
     Plus,
     Search,
     TrashIcon,
@@ -1832,7 +1833,7 @@ function BookIndex() {
                                                             >
                                                                 <EyeIcon className="h-4 w-4" />
                                                             </Button>
-                                                            {/* <Link href={route('books.edit', row.original.id)}><Button size="icon" variant="outline" className="h-7 w-7"><PencilIcon className="h-4 w-4" /></Button></Link> */}
+                                                            <Link href={route('books.edit', row.original.id)}><Button size="icon" variant="outline" className="h-7 w-7"><Pencil className="h-4 w-4" /></Button></Link>
                                                             {row.original.is_deleted ? (
                                                                 <Button
                                                                     size="icon"
@@ -1918,7 +1919,7 @@ function BookIndex() {
                                                                         >
                                                                             <EyeIcon className="h-4 w-4" />
                                                                         </Button>
-                                                                        {/* <Link href={route('books.edit', row.original.id)}><Button size="icon" variant="outline" className="h-7 w-7"><PencilIcon className="h-4 w-4" /></Button></Link> */}
+                                                                        <Link href={route('books.edit', row.original.id)}><Button size="icon" variant="outline" className="h-7 w-7"><Pencil className="h-4 w-4" /></Button></Link>
                                                                         {row.original.is_deleted ? (
                                                                             <Button
                                                                                 size="icon"
@@ -2190,11 +2191,11 @@ function BookIndex() {
                                             <EyeIcon className="h-4 w-4" /> <span className="hidden sm:inline">មើលជាមុន</span>
                                         </Button>
                                     )}
-                                    {/* <Link href={route('books.edit', rowModal.id)}>
+                                    <Link href={route('books.edit', rowModal.id)}>
                                             <Button variant="outline" size="sm" className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border-blue-300 bg-white text-blue-700 hover:bg-blue-100 dark:border-blue-500 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-blue-700">
-                                                <PencilIcon className="h-4 w-4" /> កែប្រែ
+                                                <Pencil className="h-4 w-4" />
                                             </Button>
-                                        </Link> */}
+                                        </Link>
                                     {rowModal.pdf_url && (
                                         <Button
                                             variant="outline"
