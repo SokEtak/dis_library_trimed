@@ -1,6 +1,7 @@
 'use client';
 
 import AppearanceTabs from '@/components/appearance-tabs';
+import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import echo from '@/lib/echo';
 import { translations } from '@/utils/translations/library/translations';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
@@ -31,7 +33,7 @@ import {
     Search,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Book {
     language: any;
@@ -66,9 +68,26 @@ interface Book {
 }
 
 interface AuthUser {
+    id: number;
     name: string;
     email: string;
     avatar?: string;
+    roles?: string[];
+}
+
+interface LoanRequest {
+    id: number;
+    book_id: number;
+    status: 'pending' | 'approved' | 'rejected';
+    approver_id?: number | null;
+    canceled_by_requester?: boolean;
+    decided_at?: string | null;
+}
+
+interface SearchSuggestion {
+    id: number;
+    title: string;
+    author: string;
 }
 
 interface PageProps {
@@ -84,6 +103,8 @@ interface PageProps {
     scope?: 'local' | 'global';
     bookType?: 'ebook' | 'physical';
     lang?: 'en' | 'kh';
+    canRequestLoan?: boolean;
+    loanRequests?: Record<number, LoanRequest>;
     [key: string]: any;
 }
 
@@ -104,7 +125,7 @@ const formatDate = (dateInput: string | number | undefined): string => {
 };
 
 export default function Index() {
-    const { books, flash, auth, scope, bookType = 'physical', lang = 'kh' } = usePage<PageProps>().props;
+    const { books, flash, auth, scope, bookType = 'physical', lang = 'kh', canRequestLoan = false, loanRequests = {} } = usePage<PageProps>().props;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
@@ -118,6 +139,12 @@ export default function Index() {
     const [sortProgram, setSortProgram] = useState('All');
     const [sortBy, setSortBy] = useState('None');
     const [currentPage, setCurrentPage] = useState(books.current_page);
+    const [isSearchSuggestionOpen, setIsSearchSuggestionOpen] = useState(false);
+    const [loanRequestsByBookId, setLoanRequestsByBookId] = useState<Record<number, LoanRequest>>(loanRequests || {});
+    const [requestingBookId, setRequestingBookId] = useState<number | null>(null);
+    const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({ show: false, message: '' });
+    const lastLocallyUpdatedLoanRequestIdRef = useRef<number | null>(null);
+    const searchWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const [language, setLanguage] = useState<'en' | 'kh'>(() => {
         const savedLanguage = typeof window !== 'undefined' ? localStorage.getItem('language') : null;
@@ -129,6 +156,248 @@ export default function Index() {
     }, [language]);
 
     const t = translations[language];
+
+    const searchSuggestions = useMemo<SearchSuggestion[]>(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        if (!normalizedSearch) {
+            return [];
+        }
+
+        const seenTitles = new Set<string>();
+
+        return books.data
+            .filter((book) => {
+                const normalizedTitle = String(book.title || '').toLowerCase();
+
+                if (!normalizedTitle.includes(normalizedSearch)) {
+                    return false;
+                }
+
+                if (seenTitles.has(normalizedTitle)) {
+                    return false;
+                }
+
+                seenTitles.add(normalizedTitle);
+                return true;
+            })
+            .slice(0, 6)
+            .map((book) => ({
+                id: book.id,
+                title: book.title,
+                author: book.author || t.unknownContributor,
+            }));
+    }, [search, books.data, t.unknownContributor]);
+
+    useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (!searchWrapperRef.current?.contains(event.target as Node)) {
+                setIsSearchSuggestionOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, []);
+
+    useEffect(() => {
+        setLoanRequestsByBookId(loanRequests || {});
+    }, [loanRequests, books.current_page, bookType]);
+
+    useEffect(() => {
+        const authUserId = auth.user?.id;
+        const echoInstance = echo;
+
+        if (!authUserId || !echoInstance) {
+            return;
+        }
+
+        const channelName = `book-loan-requests.user.${authUserId}`;
+        const channel = echoInstance.private(channelName);
+
+        const handleStatusUpdate = (event: {
+            loanRequest?: {
+                id?: number;
+                book_id?: number;
+                status?: LoanRequest['status'];
+                approver_id?: number | null;
+                canceled_by_requester?: boolean;
+                decided_at?: string | null;
+                requester_name?: string | null;
+            };
+        }) => {
+            const payload = event.loanRequest;
+
+            if (!payload?.book_id || !payload.status) {
+                return;
+            }
+
+            if (typeof payload.id === 'number' && lastLocallyUpdatedLoanRequestIdRef.current === payload.id) {
+                lastLocallyUpdatedLoanRequestIdRef.current = null;
+                return;
+            }
+
+            const bookId = payload.book_id;
+
+            setLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [bookId]: {
+                    id: payload.id ?? currentRequests[bookId]?.id ?? 0,
+                    book_id: bookId,
+                    status: payload.status,
+                    approver_id: payload.approver_id ?? null,
+                    canceled_by_requester: Boolean(payload.canceled_by_requester),
+                    decided_at: payload.decided_at ?? null,
+                },
+            }));
+
+            if (payload.status === 'approved') {
+                setToast({
+                    show: true,
+                    message: language === 'en' ? 'Request approved.' : 'សំណើរត្រូវបានអនុម័ត',
+                    type: 'success',
+                });
+            } else if (payload.status === 'rejected') {
+                const wasCanceledByRequester = Boolean(payload.canceled_by_requester);
+                setToast({
+                    show: true,
+                    message: wasCanceledByRequester
+                        ? language === 'en'
+                            ? 'Request canceled.'
+                            : 'សំណើរត្រូវបានបោះបង់'
+                        : language === 'en'
+                          ? 'Request rejected.'
+                          : 'សំណើរត្រូវបានបដិសេធ',
+                    type: wasCanceledByRequester ? 'info' : 'error',
+                });
+            }
+        };
+
+        channel.listen('.book-loan-request.updated', handleStatusUpdate);
+
+        return () => {
+            channel.stopListening('.book-loan-request.updated');
+            echoInstance.leave(channelName);
+        };
+    }, [auth.user?.id, language]);
+
+    const handleLoanRequest = async (bookId: number) => {
+        if (requestingBookId !== null) {
+            return;
+        }
+
+        setRequestingBookId(bookId);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.store', bookId), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string; loanRequest?: Partial<LoanRequest> | null };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to submit loan request.');
+            }
+
+            setLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [bookId]: {
+                    id: data.loanRequest?.id ?? currentRequests[bookId]?.id ?? 0,
+                    book_id: data.loanRequest?.book_id ?? bookId,
+                    status: (data.loanRequest?.status as LoanRequest['status']) ?? 'pending',
+                    approver_id: data.loanRequest?.approver_id ?? null,
+                    canceled_by_requester: Boolean(data.loanRequest?.canceled_by_requester),
+                    decided_at: data.loanRequest?.decided_at ?? null,
+                },
+            }));
+
+            setToast({
+                show: true,
+                message: data.message || (language === 'en' ? 'Loan request submitted.' : 'សំណើរត្រូវបានផ្ញើ'),
+                type: 'success',
+            });
+        } catch (error) {
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : language === 'en' ? 'Failed to submit loan request.' : 'មិនអាចផ្ញើសំណើរបានទេ',
+                type: 'error',
+            });
+        } finally {
+            setRequestingBookId(null);
+        }
+    };
+
+    const handleCancelLoanRequest = async (bookId: number) => {
+        const existingLoanRequest = loanRequestsByBookId[bookId];
+
+        if (!existingLoanRequest?.id || requestingBookId !== null) {
+            return;
+        }
+
+        lastLocallyUpdatedLoanRequestIdRef.current = existingLoanRequest.id;
+        setRequestingBookId(bookId);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.cancel', existingLoanRequest.id), {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string; loanRequest?: Partial<LoanRequest> | null };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to cancel loan request.');
+            }
+
+            setLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [bookId]: {
+                    id: data.loanRequest?.id ?? existingLoanRequest.id,
+                    book_id: data.loanRequest?.book_id ?? bookId,
+                    status: (data.loanRequest?.status as LoanRequest['status']) ?? 'rejected',
+                    approver_id: data.loanRequest?.approver_id ?? null,
+                    canceled_by_requester: Boolean(data.loanRequest?.canceled_by_requester ?? true),
+                    decided_at: data.loanRequest?.decided_at ?? null,
+                },
+            }));
+
+            setToast({
+                show: true,
+                message: data.message || (language === 'en' ? 'Request canceled.' : 'សំណើរត្រូវបានបោះបង់'),
+                type: 'info',
+            });
+        } catch (error) {
+            lastLocallyUpdatedLoanRequestIdRef.current = null;
+
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : language === 'en' ? 'Failed to cancel loan request.' : 'មិនអាចបោះបង់សំណើរបានទេ',
+                type: 'error',
+            });
+        } finally {
+            setRequestingBookId(null);
+        }
+    };
 
     const toggleLanguage = () => {
         setLanguage((prev) => (prev === 'kh' ? 'en' : 'kh'));
@@ -442,8 +711,14 @@ export default function Index() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-cyan-100 via-fuchsia-50 to-pink-100 transition-colors duration-300 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
             <Head title={bookType === 'ebook' ? t.ebooksLibrary : t.language === 'kh' ? 'បណ្ណាល័យសៀវភៅ' : 'Books Library'} />
+            <Toast
+                show={toast.show}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast((currentToast) => ({ ...currentToast, show: false }))}
+            />
             <div className="mx-auto w-full max-w-full space-y-6 px-3 py-4 text-gray-900 sm:space-y-10 sm:px-6 sm:py-8 lg:px-12 lg:space-y-14 xl:px-16 dark:text-gray-100">
-                <header className="relative flex flex-col rounded-2xl border-b border-gray-200/60 bg-white/60 px-3 py-4 shadow-lg backdrop-blur-[6px] sm:flex-row sm:items-center sm:rounded-3xl sm:px-4 sm:py-6 sm:pb-4 dark:border-gray-800 dark:bg-gray-900/70">
+                <header className="relative z-40 flex flex-col rounded-2xl border-b border-gray-200/60 bg-white/60 px-3 py-4 shadow-lg backdrop-blur-[6px] sm:flex-row sm:items-center sm:rounded-3xl sm:px-4 sm:py-6 sm:pb-4 dark:border-gray-800 dark:bg-gray-900/70">
                     {/* LEFT — Logo */}
                     <div className="flex items-center justify-between sm:w-auto sm:justify-start">
                         <Link href="/" className="flex items-center">
@@ -463,21 +738,64 @@ export default function Index() {
                     </div>
 
                     {/* CENTER — Search */}
-                    <div className="relative w-full mt-3 sm:mt-0 sm:absolute sm:top-1/2 sm:left-1/2 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2">
+                    <div
+                        ref={searchWrapperRef}
+                        className="relative z-50 mt-3 w-full sm:absolute sm:top-1/2 sm:left-1/2 sm:mt-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2"
+                    >
                         <Search className="absolute top-1/2 left-4 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-cyan-400 dark:text-cyan-300" />
                         <Input
                             placeholder={t.searchPlaceholder}
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setIsSearchSuggestionOpen(true);
+                            }}
+                            onFocus={() => setIsSearchSuggestionOpen(true)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                    setIsSearchSuggestionOpen(false);
+                                }
+                            }}
                             className="h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl border border-cyan-200 bg-white/80 pr-12 pl-10 sm:pl-12 text-xs sm:text-base shadow-lg transition-all focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400 dark:border-cyan-900 dark:bg-gray-800/80 dark:text-white"
                             aria-label={language === 'en' ? 'Search books' : 'ស្វែងរកសៀវភៅ'}
                         />
+
+                        {isSearchSuggestionOpen && search.trim().length > 0 && (
+                            <div className="absolute top-[calc(100%+0.35rem)] z-[70] w-full overflow-hidden rounded-xl border border-cyan-200 bg-white/95 shadow-xl backdrop-blur dark:border-cyan-900 dark:bg-gray-900/95">
+                                {searchSuggestions.length > 0 ? (
+                                    <ul className="max-h-72 overflow-y-auto py-1">
+                                        {searchSuggestions.map((suggestion) => (
+                                            <li key={suggestion.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSearch(suggestion.title);
+                                                        setIsSearchSuggestionOpen(false);
+                                                    }}
+                                                    className="flex w-full flex-col items-start px-3 py-2 text-left transition-colors hover:bg-cyan-50 dark:hover:bg-gray-800"
+                                                >
+                                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{suggestion.title}</span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{suggestion.author}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                        {language === 'en' ? 'No suggestions found.' : 'មិនមានការណែនាំ'}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Clear search button */}
                         {search && (
                             <Button
                                 variant="ghost"
-                                onClick={() => setSearch('')}
+                                onClick={() => {
+                                    setSearch('');
+                                    setIsSearchSuggestionOpen(false);
+                                }}
                                 className="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                                 aria-label={language === 'en' ? 'Clear search' : 'សម្អាត'}
                             >
@@ -738,6 +1056,26 @@ export default function Index() {
                             const contributorId = book.posted_by_user_id || book.user?.id;
                             const contributorName = book.user?.name || (contributorId ? `អ្នកប្រើ #${contributorId}` : t.unknownContributor);
                             const isContributorVerified = !!book.user?.isVerified;
+                            const canShowLoanRequestButton = canRequestLoan && bookType === 'physical' && book.type === 'physical';
+                            const currentLoanRequest = loanRequestsByBookId[book.id] ?? null;
+                            const loanRequestStatus = currentLoanRequest?.status ?? null;
+                            const isPendingLoanRequest = loanRequestStatus === 'pending';
+                            const isApprovedLoanRequest = loanRequestStatus === 'approved';
+                            const isProcessingLoanRequest = requestingBookId === book.id;
+                            const shouldDisableLoanRequestButton =
+                                requestingBookId !== null ||
+                                (isPendingLoanRequest ? false : isApprovedLoanRequest || !book.is_available);
+                            const loanRequestLabel = isPendingLoanRequest
+                                ? language === 'en'
+                                    ? 'Cancel Request'
+                                    : 'បោះបង់សំណើរ'
+                                : isApprovedLoanRequest
+                                  ? language === 'en'
+                                      ? 'Request Approved'
+                                      : 'សំណើរត្រូវបានអនុម័ត'
+                                  : language === 'en'
+                                    ? 'Request Loan'
+                                    : 'ដាក់សំណើរ';
 
                             return (
                                 <div
@@ -759,41 +1097,61 @@ export default function Index() {
 
                                         {/* Hover overlay with quick actions */}
                                         <div className="absolute inset-0 z-20 flex items-end justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                                            <div className="mb-2 sm:mb-4 flex w-[95%] sm:w-[92%] items-center justify-between rounded-lg bg-gradient-to-r from-black/40 to-black/20 px-2 sm:px-3 py-1 sm:py-2 text-white backdrop-blur-sm">
-                                                <div className="min-w-0 truncate text-xs sm:text-sm">
-                                                    <div className="truncate font-semibold leading-10">{book.author || t.unknownContributor}</div>
-                                                    <div className="truncate text-xs opacity-80 leading-5">
-                                                        {book.page_count ? `${book.page_count} ${language === 'en' ? 'pages' : 'ទំព័រ'}` : ''}
+                                            <div className="mb-2 sm:mb-4 flex w-[95%] sm:w-[92%] flex-col gap-2 rounded-lg bg-gradient-to-r from-black/40 to-black/20 px-2 py-2 text-white backdrop-blur-sm sm:px-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="min-w-0 truncate text-xs sm:text-sm">
+                                                        <div className="truncate font-semibold leading-6 sm:leading-7">{book.author || t.unknownContributor}</div>
+                                                        <div className="truncate text-xs opacity-80 leading-5">
+                                                            {book.page_count ? `${book.page_count} ${language === 'en' ? 'pages' : '\u1791\u17c6\u1796\u17d0\u179a'}` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 sm:space-x-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                router.get(route('library.show', book.id));
+                                                            }}
+                                                            className="rounded-full bg-white/10 p-1 sm:p-2 text-white hover:bg-white/20 flex-shrink-0"
+                                                            aria-label={language === 'en' ? 'View details' : '\u1798\u17be\u179b\u179b\u1798\u17d2\u17a2\u17b7\u178f'}
+                                                        >
+                                                            <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-blue-300 dark:text-blue-400" />
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 sm:space-x-2">
+                                                {canShowLoanRequestButton && (
                                                     <button
+                                                        type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            router.get(route('library.show', book.id));
-                                                        }}
-                                                        className="rounded-full bg-white/10 p-1 sm:p-2 text-white hover:bg-white/20 flex-shrink-0"
-                                                        aria-label={language === 'en' ? 'View details' : 'មើលលំអិត'}
-                                                    >
-                                                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-blue-300 dark:text-blue-400" />
-                                                    </button>
 
-                                                    {/* {book.downloadable && book.pdf_url && (
-                                                        <a
-                                                            href={book.pdf_url}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="rounded-full bg-white/10 p-1 sm:p-2 text-white hover:bg-white/20 flex-shrink-0"
-                                                            aria-label={language === 'en' ? 'Download PDF' : 'ទាញយក PDF'}
-                                                        >
-                                                            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                                                        </a>
-                                                    )} */}
-                                                </div>
+                                                            if (isPendingLoanRequest) {
+                                                                void handleCancelLoanRequest(book.id);
+                                                                return;
+                                                            }
+
+                                                            void handleLoanRequest(book.id);
+                                                        }}
+                                                        disabled={shouldDisableLoanRequestButton}
+                                                        className={`w-full rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs ${
+                                                            isPendingLoanRequest
+                                                                ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500'
+                                                                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+                                                        }`}
+                                                        aria-label={loanRequestLabel}
+                                                    >
+                                                        {isProcessingLoanRequest
+                                                            ? language === 'en'
+                                                                ? isPendingLoanRequest
+                                                                    ? 'Canceling...'
+                                                                    : 'Requesting...'
+                                                                : isPendingLoanRequest
+                                                                  ? '\u1780\u17c6\u1796\u17bb\u1784\u1794\u17c4\u17c7\u1794\u1784\u17cb\u179f\u17c6\u178e\u17be\u179a...'
+                                                                  : '\u1780\u17c6\u1796\u17bb\u1784\u178a\u17b6\u1780\u17cb\u179f\u17c6\u178e\u17be\u179a...'
+                                                            : loanRequestLabel}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-
                                         {/* Most Viewed Badge */}
                                         {book.view === maxViews && (
                                             <div className="absolute top-2 right-2 flex animate-pulse items-center space-x-1 rounded-xl border border-yellow-300 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-500 px-2.5 py-1 text-[10px] font-semibold text-gray-900 shadow-lg sm:text-xs dark:border-yellow-400 dark:from-yellow-500 dark:to-yellow-600">
@@ -890,3 +1248,4 @@ export default function Index() {
         </div>
     );
 }
+

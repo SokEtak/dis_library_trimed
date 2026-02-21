@@ -4,12 +4,70 @@ namespace App\Http\Controllers;
 
 use App\Models\Book;
 use App\Models\BookLoanRequest;
+use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class LibraryController extends Controller
 {
+    /**
+     * Build loan-request payload for currently listed books.
+     *
+     * @return array{canRequestLoan: bool, loanRequests: array<int, array<string, mixed>>}
+     */
+    private function buildLoanRequestPayload(LengthAwarePaginator $books, ?User $authUser, string $type): array
+    {
+        $canRequestLoan = (bool) ($authUser?->hasRole('regular-user'));
+
+        if (! $canRequestLoan || $type !== 'physical') {
+            return [
+                'canRequestLoan' => false,
+                'loanRequests' => [],
+            ];
+        }
+
+        $bookIds = $books->getCollection()
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($bookIds->isEmpty()) {
+            return [
+                'canRequestLoan' => true,
+                'loanRequests' => [],
+            ];
+        }
+
+        $loanRequests = BookLoanRequest::query()
+            ->where('requester_id', $authUser->id)
+            ->whereIn('book_id', $bookIds)
+            ->orderByDesc('id')
+            ->get()
+            ->unique('book_id')
+            ->mapWithKeys(function (BookLoanRequest $loanRequest) {
+                return [
+                    (int) $loanRequest->book_id => [
+                        'id' => (int) $loanRequest->id,
+                        'book_id' => (int) $loanRequest->book_id,
+                        'status' => $loanRequest->status,
+                        'approver_id' => $loanRequest->approver_id,
+                        'canceled_by_requester' => $loanRequest->status === 'rejected' && ! $loanRequest->approver_id,
+                        'decided_at' => optional($loanRequest->decided_at)->toIso8601String(),
+                    ],
+                ];
+            })
+            ->all();
+
+        return [
+            'canRequestLoan' => true,
+            'loanRequests' => $loanRequests,
+        ];
+    }
+
     /**
      * Build a paginated book query with filters and sorting.
      *
@@ -111,6 +169,7 @@ class LibraryController extends Controller
     public function globalLibrary(Request $request)
     {
         $books = $this->buildBookQuery($request, 'physical', 'global');
+        $loanRequestPayload = $this->buildLoanRequestPayload($books, $request->user(), 'physical');
 
         $lang = $request->user()->language ?? session('language', 'kh');
         if ($request->has('lang') && in_array($request->query('lang'), ['en', 'kh'])) {
@@ -122,6 +181,8 @@ class LibraryController extends Controller
             'books' => $books,
             'scope' => 'global',
             'lang' => $lang,
+            'canRequestLoan' => $loanRequestPayload['canRequestLoan'],
+            'loanRequests' => $loanRequestPayload['loanRequests'],
         ]);
     }
 
@@ -131,10 +192,13 @@ class LibraryController extends Controller
     public function localLibrary(Request $request)
     {
         $books = $this->buildBookQuery($request, 'physical', 'local');
+        $loanRequestPayload = $this->buildLoanRequestPayload($books, $request->user(), 'physical');
 
         return Inertia::render('Client/Library/Index', [
             'books' => $books,
             'scope' => 'local',
+            'canRequestLoan' => $loanRequestPayload['canRequestLoan'],
+            'loanRequests' => $loanRequestPayload['loanRequests'],
         ]);
     }
 
@@ -145,10 +209,13 @@ class LibraryController extends Controller
     {
         try {
             $books = $this->buildBookQuery($request, 'ebook', 'global');
+            $loanRequestPayload = $this->buildLoanRequestPayload($books, $request->user(), 'ebook');
 
             return Inertia::render('Client/Library/Index', [
                 'books' => $books,
                 'bookType' => 'ebook',
+                'canRequestLoan' => $loanRequestPayload['canRequestLoan'],
+                'loanRequests' => $loanRequestPayload['loanRequests'],
             ]);
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             return Inertia::render('Error', ['status' => 403, 'message' => $e->getMessage()]);
@@ -164,6 +231,34 @@ class LibraryController extends Controller
         $relatedBooks = Book::relatedBooks($book);
         $authUser = Auth::user();
         $canRequestLoan = (bool) ($authUser?->hasRole('regular-user'));
+        $suggestionType = $book->type === 'ebook' ? 'ebook' : 'physical';
+        $searchIndexUrl = $suggestionType === 'ebook'
+            ? route('global e-library')
+            : route('local library');
+
+        $searchSuggestions = DB::table('books')
+            ->select(['id', 'title'])
+            ->where('is_deleted', 0)
+            ->where('type', $suggestionType)
+            ->when(
+                $suggestionType === 'physical'
+                && $authUser
+                && $authUser->hasAnyRole(['regular-user', 'staff'])
+                && $authUser->campus_id,
+                function ($query) use ($authUser) {
+                    $query->where('campus_id', $authUser->campus_id);
+                }
+            )
+            ->orderBy('title')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'title' => (string) $item->title,
+                ];
+            })
+            ->values()
+            ->all();
 
         $loanRequest = null;
         if ($authUser && $canRequestLoan) {
@@ -201,6 +296,8 @@ class LibraryController extends Controller
             'relatedBooks' => $relatedBooks,
             'canRequestLoan' => $canRequestLoan,
             'loanRequest' => $loanRequest,
+            'searchIndexUrl' => $searchIndexUrl,
+            'searchSuggestions' => $searchSuggestions,
         ]);
     }
 }

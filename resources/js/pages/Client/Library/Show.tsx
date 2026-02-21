@@ -75,6 +75,12 @@ interface LoanRequest {
     decided_at?: string | null;
 }
 
+interface SearchSuggestion {
+    id: number;
+    title: string;
+    author?: string | null;
+}
+
 interface ShowProps {
     book: Book | null;
     lang?: 'en' | 'kh';
@@ -82,6 +88,8 @@ interface ShowProps {
     relatedBooks?: Book[];
     canRequestLoan?: boolean;
     loanRequest?: LoanRequest | null;
+    searchIndexUrl?: string;
+    searchSuggestions?: SearchSuggestion[];
 }
 
 // --- Utility ---
@@ -107,7 +115,16 @@ const DetailItem = ({ label, value, index }: { label: string; value: string | nu
     );
 };
 
-export default function Show({ book, lang = 'en', authUser, relatedBooks = [], canRequestLoan = false, loanRequest = null }: ShowProps) {
+export default function Show({
+    book,
+    lang = 'en',
+    authUser,
+    relatedBooks = [],
+    canRequestLoan = false,
+    loanRequest = null,
+    searchIndexUrl = '',
+    searchSuggestions = [],
+}: ShowProps) {
     const [language, setLanguage] = useState<'en' | 'kh'>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('language');
@@ -596,7 +613,13 @@ export default function Show({ book, lang = 'en', authUser, relatedBooks = [], c
                     </div>
                 </div>
 
-                <TopBar authUser={authUser} language={language} onLanguageChange={handleLanguageChange} />
+                <TopBar
+                    authUser={authUser}
+                    language={language}
+                    onLanguageChange={handleLanguageChange}
+                    searchIndexUrl={searchIndexUrl}
+                    searchSuggestions={searchSuggestions}
+                />
 
                 {/* Main container: narrower paddings on small */}
                 <main className="flex justify-center px-3 py-6 sm:px-6 sm:py-10">
