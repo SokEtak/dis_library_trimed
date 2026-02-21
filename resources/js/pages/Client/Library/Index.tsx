@@ -305,7 +305,11 @@ export default function Index() {
                 },
             });
 
-            const data = (await response.json()) as { message?: string; loanRequest?: Partial<LoanRequest> | null };
+            const data = (await response.json()) as {
+                message?: string;
+                loanRequest?: Partial<LoanRequest> | null;
+                already_pending?: boolean;
+            };
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to submit loan request.');
@@ -326,7 +330,7 @@ export default function Index() {
             setToast({
                 show: true,
                 message: data.message || (language === 'en' ? 'Loan request submitted.' : 'សំណើរត្រូវបានផ្ញើ'),
-                type: 'success',
+                type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {
             setToast({
@@ -1062,6 +1066,7 @@ export default function Index() {
                             const isPendingLoanRequest = loanRequestStatus === 'pending';
                             const isApprovedLoanRequest = loanRequestStatus === 'approved';
                             const isProcessingLoanRequest = requestingBookId === book.id;
+                            const isCanceledLoanRequest = loanRequestStatus === 'rejected' && Boolean(currentLoanRequest?.canceled_by_requester);
                             const shouldDisableLoanRequestButton =
                                 requestingBookId !== null ||
                                 (isPendingLoanRequest ? false : isApprovedLoanRequest || !book.is_available);
@@ -1076,6 +1081,35 @@ export default function Index() {
                                   : language === 'en'
                                     ? 'Request Loan'
                                     : 'ដាក់សំណើរ';
+
+                            const loanRequestStatusBadge = loanRequestStatus
+                                ? {
+                                      label:
+                                          loanRequestStatus === 'pending'
+                                              ? language === 'en'
+                                                  ? 'Pending'
+                                                  : '\u1780\u17c6\u1796\u17bb\u1784\u179a\u1784\u17cb\u1785\u17b6\u17c6'
+                                              : loanRequestStatus === 'approved'
+                                                ? language === 'en'
+                                                    ? 'Approved'
+                                                    : '\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u17a2\u1793\u17bb\u1798\u17d0\u178f'
+                                                : isCanceledLoanRequest
+                                                  ? language === 'en'
+                                                      ? 'Canceled'
+                                                      : '\u1794\u17c4\u17c7\u1794\u1784\u17cb'
+                                                  : language === 'en'
+                                                    ? 'Rejected'
+                                                    : '\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1794\u178a\u17b7\u179f\u17c1\u1792',
+                                      className:
+                                          loanRequestStatus === 'pending'
+                                              ? 'border-amber-300 bg-amber-100/95 text-amber-800 dark:border-amber-500/60 dark:bg-amber-900/40 dark:text-amber-200'
+                                              : loanRequestStatus === 'approved'
+                                                ? 'border-emerald-300 bg-emerald-100/95 text-emerald-800 dark:border-emerald-500/60 dark:bg-emerald-900/40 dark:text-emerald-200'
+                                                : isCanceledLoanRequest
+                                                  ? 'border-slate-300 bg-slate-100/95 text-slate-800 dark:border-slate-500/60 dark:bg-slate-900/50 dark:text-slate-200'
+                                                  : 'border-rose-300 bg-rose-100/95 text-rose-800 dark:border-rose-500/60 dark:bg-rose-900/40 dark:text-rose-200',
+                                  }
+                                : null;
 
                             return (
                                 <div
@@ -1157,6 +1191,13 @@ export default function Index() {
                                             <div className="absolute top-2 right-2 flex animate-pulse items-center space-x-1 rounded-xl border border-yellow-300 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-500 px-2.5 py-1 text-[10px] font-semibold text-gray-900 shadow-lg sm:text-xs dark:border-yellow-400 dark:from-yellow-500 dark:to-yellow-600">
                                                 <Crown className="h-3 w-3 text-yellow-700 dark:text-yellow-800" />
                                                 <span>{t.mostViewed}</span>
+                                            </div>
+                                        )}
+                                        {loanRequestStatusBadge && (
+                                            <div
+                                                className={`absolute top-2 left-2 z-30 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold shadow sm:text-xs ${loanRequestStatusBadge.className}`}
+                                            >
+                                                {loanRequestStatusBadge.label}
                                             </div>
                                         )}
                                     </div>

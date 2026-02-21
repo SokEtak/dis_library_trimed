@@ -132,6 +132,9 @@ class Book extends Model
                     'id' => $relatedBook->id,
                     'title' => $relatedBook->title,
                     'cover' => $relatedBook->cover,
+                    'author' => $relatedBook->author,
+                    'type' => $relatedBook->type,
+                    'is_available' => (bool) $relatedBook->is_available,
                     'user' => $relatedBook->user ? [
                         'name' => $relatedBook->user->name,
                         'isVerified' => $relatedBook->user->isVerified ?? false,

@@ -5,7 +5,7 @@ import echo from '@/lib/echo';
 import { translations } from '@/utils/translations/library/translations';
 import { Head, Link, router } from '@inertiajs/react';
 import { BookOpen, Clipboard, Download, Eye, Facebook, Info, List, Verified } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FaTelegram, FaWhatsapp } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 import { pdfjs } from 'react-pdf';
@@ -69,6 +69,7 @@ interface AuthUser {
 
 interface LoanRequest {
     id: number;
+    book_id?: number;
     status: 'pending' | 'approved' | 'rejected';
     approver_id?: number | null;
     canceled_by_requester?: boolean;
@@ -88,9 +89,65 @@ interface ShowProps {
     relatedBooks?: Book[];
     canRequestLoan?: boolean;
     loanRequest?: LoanRequest | null;
+    relatedLoanRequests?: Record<number, LoanRequest>;
     searchIndexUrl?: string;
     searchSuggestions?: SearchSuggestion[];
 }
+
+interface LoanRequestStatusBadge {
+    label: string;
+    className: string;
+}
+
+const toPositiveNumber = (value: unknown): number | null => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return null;
+    }
+
+    return parsed;
+};
+
+const getLoanRequestStatusBadge = (
+    status: LoanRequest['status'] | null,
+    canceledByRequester: boolean,
+    language: 'en' | 'kh',
+): LoanRequestStatusBadge | null => {
+    if (!status) {
+        return null;
+    }
+
+    if (status === 'pending') {
+        return {
+            label: language === 'en' ? 'Pending' : '\u1780\u17c6\u1796\u17bb\u1784\u179a\u1784\u17cb\u1785\u17b6\u17c6',
+            className:
+                'border-amber-300 bg-amber-100/95 text-amber-800 dark:border-amber-500/60 dark:bg-amber-900/40 dark:text-amber-200',
+        };
+    }
+
+    if (status === 'approved') {
+        return {
+            label: language === 'en' ? 'Approved' : '\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u17a2\u1793\u17bb\u1798\u17d0\u178f',
+            className:
+                'border-emerald-300 bg-emerald-100/95 text-emerald-800 dark:border-emerald-500/60 dark:bg-emerald-900/40 dark:text-emerald-200',
+        };
+    }
+
+    if (canceledByRequester) {
+        return {
+            label: language === 'en' ? 'Canceled' : '\u1794\u17c4\u17c7\u1794\u1784\u17cb',
+            className:
+                'border-slate-300 bg-slate-100/95 text-slate-800 dark:border-slate-500/60 dark:bg-slate-900/50 dark:text-slate-200',
+        };
+    }
+
+    return {
+        label: language === 'en' ? 'Rejected' : '\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1794\u178a\u17b7\u179f\u17c1\u1792',
+        className:
+            'border-rose-300 bg-rose-100/95 text-rose-800 dark:border-rose-500/60 dark:bg-rose-900/40 dark:text-rose-200',
+    };
+};
 
 // --- Utility ---
 const formatNumber = (number: number): string => {
@@ -122,6 +179,7 @@ export default function Show({
     relatedBooks = [],
     canRequestLoan = false,
     loanRequest = null,
+    relatedLoanRequests = {},
     searchIndexUrl = '',
     searchSuggestions = [],
 }: ShowProps) {
@@ -140,10 +198,19 @@ export default function Show({
     const [loanRequestStatus, setLoanRequestStatus] = useState<LoanRequest['status'] | null>(loanRequest?.status ?? null);
     const [loanRequestId, setLoanRequestId] = useState<number | null>(loanRequest?.id ?? null);
     const [loanRequestCanceledByRequester, setLoanRequestCanceledByRequester] = useState<boolean>(Boolean(loanRequest?.canceled_by_requester));
+    const [relatedLoanRequestsByBookId, setRelatedLoanRequestsByBookId] = useState<Record<number, LoanRequest>>(relatedLoanRequests || {});
     const [requestingLoan, setRequestingLoan] = useState(false);
+    const [requestingRelatedBookId, setRequestingRelatedBookId] = useState<number | null>(null);
     const lastNotifiedLoanSignatureRef = useRef<string>(`${loanRequest?.status ?? 'none'}:${loanRequest?.canceled_by_requester ? '1' : '0'}`);
     const lastLocallyUpdatedLoanRequestIdRef = useRef<number | null>(null);
     const currentBookIdRef = useRef<number | undefined>(book?.id);
+    const relatedBookIdSet = useMemo(() => {
+        return new Set(
+            relatedBooks
+                .map((relatedBook) => Number(relatedBook.id))
+                .filter((relatedBookId) => Number.isFinite(relatedBookId) && relatedBookId > 0),
+        );
+    }, [relatedBooks]);
 
     // Ref for share button/menu
     const shareMenuRef = useRef<HTMLDivElement>(null);
@@ -174,6 +241,10 @@ export default function Show({
         setLoanRequestId(loanRequest?.id ?? null);
         setLoanRequestCanceledByRequester(Boolean(loanRequest?.canceled_by_requester));
     }, [book?.id, loanRequest?.id, loanRequest?.status, loanRequest?.canceled_by_requester]);
+
+    useEffect(() => {
+        setRelatedLoanRequestsByBookId(relatedLoanRequests || {});
+    }, [book?.id, relatedLoanRequests]);
 
     useEffect(() => {
         if (currentBookIdRef.current !== book?.id) {
@@ -218,23 +289,52 @@ export default function Show({
                 id?: number;
                 book_id?: number;
                 status?: LoanRequest['status'];
+                approver_id?: number | null;
                 canceled_by_requester?: boolean;
+                decided_at?: string | null;
             };
         }) => {
-            if (!book?.id || event.loanRequest?.book_id !== book.id || !event.loanRequest.status) {
+            const incomingLoanRequest = event.loanRequest;
+
+            if (!incomingLoanRequest?.book_id || !incomingLoanRequest.status) {
                 return;
             }
 
-            if (typeof event.loanRequest.id === 'number' && lastLocallyUpdatedLoanRequestIdRef.current === event.loanRequest.id) {
+            const updatedBookId = toPositiveNumber(incomingLoanRequest.book_id);
+            const updatedRequestId = toPositiveNumber(incomingLoanRequest.id);
+
+            if (!updatedBookId) {
+                return;
+            }
+
+            if (updatedRequestId && lastLocallyUpdatedLoanRequestIdRef.current === updatedRequestId) {
                 lastLocallyUpdatedLoanRequestIdRef.current = null;
                 return;
             }
 
-            if (typeof event.loanRequest.id === 'number') {
-                setLoanRequestId(event.loanRequest.id);
+            if (book?.id && updatedBookId === Number(book.id)) {
+                if (updatedRequestId) {
+                    setLoanRequestId(updatedRequestId);
+                }
+                setLoanRequestStatus(incomingLoanRequest.status);
+                setLoanRequestCanceledByRequester(Boolean(incomingLoanRequest.canceled_by_requester));
             }
-            setLoanRequestStatus(event.loanRequest.status);
-            setLoanRequestCanceledByRequester(Boolean(event.loanRequest.canceled_by_requester));
+
+            if (!relatedBookIdSet.has(updatedBookId)) {
+                return;
+            }
+
+            setRelatedLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [updatedBookId]: {
+                    id: updatedRequestId ?? currentRequests[updatedBookId]?.id ?? 0,
+                    book_id: updatedBookId,
+                    status: incomingLoanRequest.status,
+                    approver_id: incomingLoanRequest.approver_id ?? currentRequests[updatedBookId]?.approver_id ?? null,
+                    canceled_by_requester: Boolean(incomingLoanRequest.canceled_by_requester),
+                    decided_at: incomingLoanRequest.decided_at ?? currentRequests[updatedBookId]?.decided_at ?? null,
+                },
+            }));
         };
 
         channel.listen('.book-loan-request.updated', handleStatusUpdate);
@@ -243,7 +343,7 @@ export default function Show({
             channel.stopListening('.book-loan-request.updated');
             echoInstance.leave(channelName);
         };
-    }, [authUser?.id, book?.id, book?.title]);
+    }, [authUser?.id, book?.id, relatedBookIdSet]);
 
     useEffect(() => {
         if (!book?.id) {
@@ -251,19 +351,19 @@ export default function Show({
         }
 
         const intervalId = window.setInterval(() => {
-            if (requestingLoan) {
+            if (requestingLoan || requestingRelatedBookId !== null) {
                 return;
             }
 
             router.reload({
-                only: ['book', 'loanRequest'],
+                only: ['book', 'loanRequest', 'relatedLoanRequests'],
                 preserveScroll: true,
                 preserveState: true,
             });
         }, 1500);
 
         return () => window.clearInterval(intervalId);
-    }, [book?.id, requestingLoan]);
+    }, [book?.id, requestingLoan, requestingRelatedBookId]);
 
     const handleLanguageChange = () => {
         setLanguage(language === 'en' ? 'kh' : 'en');
@@ -322,7 +422,7 @@ export default function Show({
                 },
             });
 
-            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null };
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null; already_pending?: boolean };
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to submit loan request.');
@@ -334,7 +434,7 @@ export default function Show({
             setToast({
                 show: true,
                 message: data.message || 'Loan request submitted.',
-                type: 'success',
+                type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {
             setToast({
@@ -369,7 +469,7 @@ export default function Show({
                 },
             });
 
-            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null };
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null; already_pending?: boolean };
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to cancel loan request.');
@@ -392,6 +492,120 @@ export default function Show({
             });
         } finally {
             setRequestingLoan(false);
+        }
+    };
+
+    const handleRelatedLoanRequest = async (relatedBookId: number) => {
+        if (!relatedBookId || requestingRelatedBookId !== null || requestingLoan) {
+            return;
+        }
+
+        setRequestingRelatedBookId(relatedBookId);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.store', relatedBookId), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null; already_pending?: boolean };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to submit loan request.');
+            }
+
+            setRelatedLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [relatedBookId]: {
+                    id: data.loanRequest?.id ?? currentRequests[relatedBookId]?.id ?? 0,
+                    book_id: data.loanRequest?.book_id ?? relatedBookId,
+                    status: data.loanRequest?.status ?? 'pending',
+                    approver_id: data.loanRequest?.approver_id ?? null,
+                    canceled_by_requester: Boolean(data.loanRequest?.canceled_by_requester),
+                    decided_at: data.loanRequest?.decided_at ?? null,
+                },
+            }));
+
+            setToast({
+                show: true,
+                message: data.message || (language === 'en' ? 'Loan request submitted.' : 'ážŸáŸ†ážŽáž¾ážšâ€‹â€‹ážáŸ’ážšáž¼ážœâ€‹áž”áž¶áž“â€‹áž•áŸ’áž‰áž¾ážš'),
+                type: data.already_pending ? 'info' : 'success',
+            });
+        } catch (error) {
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : language === 'en' ? 'Failed to submit loan request.' : 'áž˜áž·áž“áž¢ាចáž•áŸ’áž‰áž¾ážŸáŸ†ážŽáž¾ážšáž”áž¶áž“áž‘áŸ',
+                type: 'error',
+            });
+        } finally {
+            setRequestingRelatedBookId(null);
+        }
+    };
+
+    const handleCancelRelatedLoanRequest = async (relatedBookId: number) => {
+        const existingLoanRequest = relatedLoanRequestsByBookId[relatedBookId];
+
+        if (!existingLoanRequest?.id || requestingRelatedBookId !== null || requestingLoan) {
+            return;
+        }
+
+        lastLocallyUpdatedLoanRequestIdRef.current = existingLoanRequest.id;
+        setRequestingRelatedBookId(relatedBookId);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('library.loan-requests.cancel', existingLoanRequest.id), {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+            });
+
+            const data = (await response.json()) as { message?: string; loanRequest?: LoanRequest | null };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to cancel loan request.');
+            }
+
+            setRelatedLoanRequestsByBookId((currentRequests) => ({
+                ...currentRequests,
+                [relatedBookId]: {
+                    id: data.loanRequest?.id ?? existingLoanRequest.id,
+                    book_id: data.loanRequest?.book_id ?? relatedBookId,
+                    status: data.loanRequest?.status ?? 'rejected',
+                    approver_id: data.loanRequest?.approver_id ?? null,
+                    canceled_by_requester: Boolean(data.loanRequest?.canceled_by_requester ?? true),
+                    decided_at: data.loanRequest?.decided_at ?? null,
+                },
+            }));
+
+            setToast({
+                show: true,
+                message: data.message || (language === 'en' ? 'Request canceled.' : 'ážŸáŸ†ážŽáž¾ážšážáŸ’ážšáž¼ážœáž”áž¶áž“áž”áŸ„áŸ‡áž”áž„áŸ‹'),
+                type: 'info',
+            });
+        } catch (error) {
+            lastLocallyUpdatedLoanRequestIdRef.current = null;
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : language === 'en' ? 'Failed to cancel loan request.' : 'áž˜áž·áž“áž¢ាចáž”áŸ„áŸ‡áž”áž„áŸ‹ážŸáŸ†ážŽáž¾ážšáž”áž¶áž“áž‘áŸ',
+                type: 'error',
+            });
+        } finally {
+            setRequestingRelatedBookId(null);
         }
     };
 
@@ -471,8 +685,9 @@ export default function Show({
             : loanRequestStatus === 'approved'
               ? 'សំណើរត្រូវបានអនុម័ត'
               : 'ដាក់សំណើរ';
+    const loanRequestStatusBadge = getLoanRequestStatusBadge(loanRequestStatus, loanRequestCanceledByRequester, language);
     const shouldDisableLoanRequestButton =
-        requestingLoan || (isPendingLoanRequest ? false : loanRequestStatus === 'approved' || !book.is_available);
+        requestingLoan || requestingRelatedBookId !== null || (isPendingLoanRequest ? false : loanRequestStatus === 'approved' || !book.is_available);
 
     const renderContributorSection = () => {
         if (!book.user) return null;
@@ -907,6 +1122,14 @@ export default function Show({
                                         </button>
                                     )}
                                     {canShowLoanRequestButton && (
+                                        <>
+                                            {loanRequestStatusBadge && (
+                                                <div className="flex justify-center">
+                                                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${loanRequestStatusBadge.className}`}>
+                                                        {loanRequestStatusBadge.label}
+                                                    </span>
+                                                </div>
+                                            )}
                                         <button
                                             type="button"
                                             onClick={isPendingLoanRequest ? handleCancelLoanRequest : handleLoanRequest}
@@ -920,6 +1143,7 @@ export default function Show({
                                         >
                                             {requestingLoan ? (isPendingLoanRequest ? 'កំពុងបោះបង់សំណើរ...' : 'កំពុងដាក់សំណើរ...') : loanRequestLabel}
                                         </button>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -932,35 +1156,114 @@ export default function Show({
                                     {translations[language].related_books}
                                 </h2>
                                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
-                                    {relatedBooks.slice(0, 20).map((relatedBook) => (
-                                        <Link
-                                            key={relatedBook.id}
-                                            href={`/library/${relatedBook.id}`}
-                                            className="group relative flex flex-col items-center rounded-xl border border-white/60 bg-white/60 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-3 dark:border-white/10 dark:bg-white/[0.05]"
-                                            aria-label={`View ${relatedBook.title}`}
-                                        >
-                                            <div className="w-full max-w-[160px]">
-                                                <div className="aspect-[3/4] w-full overflow-hidden rounded-md">
-                                                    <img
-                                                        src={relatedBook.cover}
-                                                        alt={relatedBook.title}
-                                                        className="h-full w-full transform object-fit shadow-md transition duration-300 group-hover:scale-[1.03]"
-                                                        loading="lazy"
-                                                    />
-                                                </div>
+                                    {relatedBooks.slice(0, 20).map((relatedBook) => {
+                                        const relatedBookId = Number(relatedBook.id);
+
+                                        if (!Number.isFinite(relatedBookId) || relatedBookId <= 0) {
+                                            return null;
+                                        }
+
+                                        const currentRelatedLoanRequest = relatedLoanRequestsByBookId[relatedBookId] ?? null;
+                                        const relatedLoanRequestStatus = currentRelatedLoanRequest?.status ?? null;
+                                        const isPendingRelatedLoanRequest = relatedLoanRequestStatus === 'pending';
+                                        const isApprovedRelatedLoanRequest = relatedLoanRequestStatus === 'approved';
+                                        const isProcessingRelatedLoanRequest = requestingRelatedBookId === relatedBookId;
+                                        const canShowRelatedLoanRequestButton =
+                                            canRequestLoan && relatedBook.type === 'physical';
+                                        const shouldDisableRelatedLoanRequestButton =
+                                            requestingLoan ||
+                                            requestingRelatedBookId !== null ||
+                                            (isPendingRelatedLoanRequest ? false : isApprovedRelatedLoanRequest || !relatedBook.is_available);
+                                        const relatedLoanRequestLabel = isPendingRelatedLoanRequest
+                                            ? language === 'en'
+                                                ? 'Cancel Request'
+                                                : '\u1794\u17c4\u17c7\u1794\u1784\u17cb\u179f\u17c6\u178e\u17be\u179a'
+                                            : isApprovedRelatedLoanRequest
+                                              ? language === 'en'
+                                                  ? 'Request Approved'
+                                                  : '\u179f\u17c6\u178e\u17be\u179a\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u17a2\u1793\u17bb\u1798\u17d0\u178f'
+                                              : language === 'en'
+                                                ? 'Request Loan'
+                                                : '\u178a\u17b6\u1780\u17cb\u179f\u17c6\u178e\u17be\u179a';
+                                        const relatedLoanRequestStatusBadge = getLoanRequestStatusBadge(
+                                            relatedLoanRequestStatus,
+                                            Boolean(currentRelatedLoanRequest?.canceled_by_requester),
+                                            language,
+                                        );
+
+                                        return (
+                                            <div
+                                                key={relatedBookId}
+                                                className="group relative flex flex-col items-center rounded-xl border border-white/60 bg-white/60 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-3 dark:border-white/10 dark:bg-white/[0.05]"
+                                            >
+                                                <Link href={`/library/${relatedBookId}`} className="block w-full" aria-label={`View ${relatedBook.title}`}>
+                                                    <div className="w-full max-w-[160px]">
+                                                        <div className="aspect-[3/4] w-full overflow-hidden rounded-md">
+                                                            <img
+                                                                src={relatedBook.cover}
+                                                                alt={relatedBook.title}
+                                                                className="h-full w-full transform object-fit shadow-md transition duration-300 group-hover:scale-[1.03]"
+                                                                loading="lazy"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2.5 w-full text-center sm:mt-3">
+                                                        <p className="line-clamp-2 text-xs leading-6 font-semibold text-gray-900 sm:text-sm dark:text-gray-100">
+                                                            {relatedBook.title}
+                                                        </p>
+                                                        <p className="mt-1 line-clamp-1 text-[11px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">
+                                                            {relatedBook.user?.name || relatedBook.author || translations[language].unknown}
+                                                        </p>
+                                                        {relatedLoanRequestStatusBadge && (
+                                                            <div className="mt-2 flex justify-center">
+                                                                <span
+                                                                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-xs ${relatedLoanRequestStatusBadge.className}`}
+                                                                >
+                                                                    {relatedLoanRequestStatusBadge.label}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Link>
+                                                {canShowRelatedLoanRequestButton && (
+                                                    <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20 translate-y-2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.preventDefault();
+                                                                event.stopPropagation();
+
+                                                                if (isPendingRelatedLoanRequest) {
+                                                                    void handleCancelRelatedLoanRequest(relatedBookId);
+                                                                    return;
+                                                                }
+
+                                                                void handleRelatedLoanRequest(relatedBookId);
+                                                            }}
+                                                            disabled={shouldDisableRelatedLoanRequestButton}
+                                                            className={`pointer-events-auto w-full rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs ${
+                                                                isPendingRelatedLoanRequest
+                                                                    ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500'
+                                                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+                                                            }`}
+                                                            aria-label={relatedLoanRequestLabel}
+                                                        >
+                                                            {isProcessingRelatedLoanRequest
+                                                                ? language === 'en'
+                                                                    ? isPendingRelatedLoanRequest
+                                                                        ? 'Canceling...'
+                                                                        : 'Requesting...'
+                                                                    : isPendingRelatedLoanRequest
+                                                                      ? '\u1780\u17c6\u1796\u17bb\u1784\u1794\u17c4\u17c7\u1794\u1784\u17cb\u179f\u17c6\u178e\u17be\u179a...'
+                                                                      : '\u1780\u17c6\u1796\u17bb\u1784\u178a\u17b6\u1780\u17cb\u179f\u17c6\u178e\u17be\u179a...'
+                                                                : relatedLoanRequestLabel}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <span className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-transparent transition group-focus-within:ring-blue-300/60 dark:group-focus-within:ring-blue-900/40" />
                                             </div>
-                                            <div className="mt-2.5 w-full text-center sm:mt-3">
-                                                <p className="line-clamp-2 text-xs leading-6 font-semibold text-gray-900 sm:text-sm dark:text-gray-100">
-                                                    {relatedBook.title}
-                                                </p>
-                                                <p className="mt-1 line-clamp-1 text-[11px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">
-                                                    {relatedBook.user?.name || relatedBook.author || translations[language].unknown}
-                                                </p>
-                                                {/* <img src={relatedBook.user?.avatar} alt={`${relatedBook.user?.name || relatedBook.author}'s avatar`} className="h-4 w-4 rounded-full object-cover" loading="lazy" /> */}
-                                            </div>
-                                            <span className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-transparent transition group-focus:ring-blue-300/60 dark:group-focus:ring-blue-900/40" />
-                                        </Link>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

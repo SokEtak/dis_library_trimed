@@ -261,6 +261,7 @@ class LibraryController extends Controller
             ->all();
 
         $loanRequest = null;
+        $relatedLoanRequests = [];
         if ($authUser && $canRequestLoan) {
             $latestRequest = BookLoanRequest::query()
                 ->where('book_id', $book->id)
@@ -275,6 +276,34 @@ class LibraryController extends Controller
                 'canceled_by_requester' => $latestRequest->status === 'rejected' && ! $latestRequest->approver_id,
                 'decided_at' => optional($latestRequest->decided_at)->toIso8601String(),
             ] : null;
+
+            $relatedBookIds = collect($relatedBooks)
+                ->pluck('id')
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->values();
+
+            if ($relatedBookIds->isNotEmpty()) {
+                $relatedLoanRequests = BookLoanRequest::query()
+                    ->where('requester_id', $authUser->id)
+                    ->whereIn('book_id', $relatedBookIds)
+                    ->orderByDesc('id')
+                    ->get()
+                    ->unique('book_id')
+                    ->mapWithKeys(function (BookLoanRequest $relatedLoanRequest) {
+                        return [
+                            (int) $relatedLoanRequest->book_id => [
+                                'id' => (int) $relatedLoanRequest->id,
+                                'book_id' => (int) $relatedLoanRequest->book_id,
+                                'status' => $relatedLoanRequest->status,
+                                'approver_id' => $relatedLoanRequest->approver_id,
+                                'canceled_by_requester' => $relatedLoanRequest->status === 'rejected' && ! $relatedLoanRequest->approver_id,
+                                'decided_at' => optional($relatedLoanRequest->decided_at)->toIso8601String(),
+                            ],
+                        ];
+                    })
+                    ->all();
+            }
         }
 
         // Count only full page visits, not Inertia partial reload polling.
@@ -296,6 +325,7 @@ class LibraryController extends Controller
             'relatedBooks' => $relatedBooks,
             'canRequestLoan' => $canRequestLoan,
             'loanRequest' => $loanRequest,
+            'relatedLoanRequests' => $relatedLoanRequests,
             'searchIndexUrl' => $searchIndexUrl,
             'searchSuggestions' => $searchSuggestions,
         ]);

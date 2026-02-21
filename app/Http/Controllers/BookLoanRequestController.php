@@ -23,45 +23,59 @@ class BookLoanRequestController extends Controller
             abort(403, 'Only regular users can request to borrow books.');
         }
 
-        if ($book->type !== 'physical' || (bool) $book->is_deleted) {
-            throw ValidationException::withMessages([
-                'book' => 'Only active physical books can be requested.',
-            ]);
+        [$loanRequest, $wasCreated] = DB::transaction(function () use ($book, $user): array {
+            $lockedBook = Book::query()
+                ->whereKey($book->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedBook || $lockedBook->type !== 'physical' || (bool) $lockedBook->is_deleted) {
+                throw ValidationException::withMessages([
+                    'book' => 'Only active physical books can be requested.',
+                ]);
+            }
+
+            // Idempotent behavior: never create more than one pending request per user/book.
+            $existingPendingRequest = BookLoanRequest::query()
+                ->where('book_id', $lockedBook->id)
+                ->where('requester_id', $user->id)
+                ->where('status', 'pending')
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingPendingRequest) {
+                return [$existingPendingRequest->load(['book:id,title', 'requester:id,name']), false];
+            }
+
+            if (! $lockedBook->is_available) {
+                throw ValidationException::withMessages([
+                    'book' => 'This book is not currently available.',
+                ]);
+            }
+
+            $newLoanRequest = BookLoanRequest::create([
+                'book_id' => $lockedBook->id,
+                'requester_id' => $user->id,
+                'campus_id' => $user->campus_id ?? $lockedBook->campus_id,
+                'status' => 'pending',
+            ])->load(['book:id,title', 'requester:id,name']);
+
+            return [$newLoanRequest, true];
+        });
+
+        if ($wasCreated) {
+            broadcast(new BookLoanRequestCreated($loanRequest));
+            broadcast(new DashboardSummaryUpdated('book-loan-request.store'));
         }
-
-        if (! $book->is_available) {
-            throw ValidationException::withMessages([
-                'book' => 'This book is not currently available.',
-            ]);
-        }
-
-        $hasPendingRequest = BookLoanRequest::query()
-            ->where('book_id', $book->id)
-            ->where('requester_id', $user->id)
-            ->where('status', 'pending')
-            ->exists();
-
-        if ($hasPendingRequest) {
-            throw ValidationException::withMessages([
-                'book' => 'You already have a pending request for this book.',
-            ]);
-        }
-
-        $loanRequest = BookLoanRequest::create([
-            'book_id' => $book->id,
-            'requester_id' => $user->id,
-            'campus_id' => $user->campus_id ?? $book->campus_id,
-            'status' => 'pending',
-        ])->load(['book:id,title', 'requester:id,name']);
-
-        broadcast(new BookLoanRequestCreated($loanRequest));
-        broadcast(new DashboardSummaryUpdated('book-loan-request.store'));
 
         return response()->json([
-            // 'message' => 'Loan request sent to the library admin.',
-            'message' => 'សំណើរ​​ត្រូវ​បាន​ផ្ញើរ',
+            'message' => $wasCreated
+                ? 'Loan request submitted.'
+                : 'You already have a pending request for this book.',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
-        ], 201);
+            'already_pending' => ! $wasCreated,
+        ], $wasCreated ? 201 : 200);
     }
 
     public function decide(Request $request, BookLoanRequest $loanRequest): JsonResponse
@@ -221,3 +235,4 @@ class BookLoanRequestController extends Controller
         ];
     }
 }
+
