@@ -77,13 +77,13 @@ export default function AdminLoanRequestAlerts() {
 
     const formatRelativeAge = (createdAt: string | null) => {
         if (!createdAt) {
-            return 'áž‘áž¾áž”ážáŸ‚';
+            return 'មិនមាន';
         }
 
         const createdAtMs = new Date(createdAt).getTime();
 
         if (Number.isNaN(createdAtMs)) {
-            return 'Error';
+            return 'កំហុស';
         }
 
         const elapsedSeconds = Math.max(0, Math.floor((nowMs - createdAtMs) / 1000));
