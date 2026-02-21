@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import AdminLoanRequestAlerts from '@/components/admin-loan-request-alerts';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
@@ -25,6 +26,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
             {showSidebar && <AppSidebar />}
             <AppContent variant={showSidebar ? "sidebar" : "plain"} className="overflow-x-hidden">
                 {showSidebar && <AppSidebarHeader breadcrumbs={breadcrumbs} />}
+                <AdminLoanRequestAlerts />
                 {children}
             </AppContent>
         </AppShell>

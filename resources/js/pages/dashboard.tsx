@@ -2,6 +2,7 @@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList } from '@/components/ui/breadcrumb';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AdminLoanRequestAlerts from '@/components/admin-loan-request-alerts';
 import { dashboardCards } from '@/config/dashboard-cards';
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -236,6 +237,7 @@ export default function Page() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
+        <AdminLoanRequestAlerts />
         <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-4 border-b border-gray-200/60 bg-white/80 dark:bg-gray-900/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 px-5 w-full">
             <SidebarTrigger className="text-gray-600 hover:text-gray-900" />

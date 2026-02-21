@@ -57,7 +57,7 @@ class BookLoanRequestController extends Controller
 
         return response()->json([
             // 'message' => 'Loan request sent to the library admin.',
-            'message' => 'សំណើរ​សុំ​ការខ្ចី​សៀវភៅ​ត្រូវ​បាន​ផ្ញើ',
+            'message' => 'សំណើរ​​ត្រូវ​បាន​ផ្ញើរ',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
         ], 201);
     }
@@ -131,7 +131,7 @@ class BookLoanRequestController extends Controller
         return response()->json([
             'message' => $decision === 'approved'
                 ? 'សំណើរ​សុំ​ការខ្ចី​សៀវភៅ​ត្រូវ​បាន​អនុម័ត'
-                : 'សំណើរ​សុំ​ការខ្ចី​សៀវភៅ​ត្រូវ​បាន​បដិសេធ',
+                : 'សំណើរ​ស្នើរសុំខ្ចី​សៀវភៅ​ត្រូវ​បាន​បដិសេធ',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
             'bookLoan' => $createdBookLoan ? $this->bookLoanPayload($createdBookLoan) : null,
         ]);

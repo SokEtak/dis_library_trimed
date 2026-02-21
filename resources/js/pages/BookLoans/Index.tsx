@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import Toast from "@/components/Toast";
-import { Link, router, useForm } from "@inertiajs/react";
-import echo from "@/lib/echo";
+import { Link, useForm } from "@inertiajs/react";
 import {
     EyeIcon,
     PencilIcon,
@@ -83,20 +81,8 @@ interface BookLoan {
     user: User | null;
 }
 
-interface LoanRequest {
-    id: number;
-    book_id: number;
-    book_title: string | null;
-    requester_id: number;
-    requester_name: string | null;
-    status: "pending" | "approved" | "rejected";
-    canceled_by_requester?: boolean;
-    created_at: string | null;
-}
-
 interface BookLoansProps {
     bookloans?: BookLoan[] | null;
-    loanRequests?: LoanRequest[] | null;
     books?: Book[];
     users?: User[];
     flash?: {
@@ -589,7 +575,7 @@ const getColumns = (
     },
 ];
 
-export default function BookLoans({ bookloans = [], loanRequests = [], flash, lang = "kh" }: BookLoansProps) {
+export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLoansProps) {
     const t = translations[lang];
     const { processing, delete: destroy } = useForm();
     const [bookLoanToDelete, setBookLoanToDelete] = useState<BookLoan | null>(null);
@@ -597,10 +583,6 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
     const [, setSelectedRow] = useState<BookLoan | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [bookLoanRows, setBookLoanRows] = useState<BookLoan[]>(bookloans || []);
-    const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(loanRequests || []);
-    const [decisionProcessingRequestId, setDecisionProcessingRequestId] = useState<number | null>(null);
-    const [toast, setToast] = useState<{ show: boolean; message: string; type?: "success" | "error" | "info" }>({ show: false, message: "" });
-    const lastLocallyDecidedRequestIdRef = useRef<number | null>(null);
 
     const columns = useMemo(
         () => getColumns(t, processing, setBookLoanToDelete, setRowModalOpen, setSelectedRow, setDeleteDialogOpen),
@@ -610,86 +592,6 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
     useEffect(() => {
         setBookLoanRows(bookloans || []);
     }, [bookloans]);
-
-    useEffect(() => {
-        setPendingLoanRequests(loanRequests || []);
-    }, [loanRequests]);
-
-    useEffect(() => {
-        const echoInstance = echo;
-        if (!echoInstance) {
-            return;
-        }
-
-        const adminChannelName = "admin.book-loan-requests";
-        const channel = echoInstance.private(adminChannelName);
-
-        const handleCreatedEvent = (event: { loanRequest?: LoanRequest }) => {
-            if (!event.loanRequest) {
-                return;
-            }
-
-            setPendingLoanRequests((currentRequests) => {
-                if (currentRequests.some((requestItem) => requestItem.id === event.loanRequest?.id)) {
-                    return currentRequests;
-                }
-
-                return [event.loanRequest as LoanRequest, ...currentRequests];
-            });
-        };
-
-        const handleUpdatedEvent = (event: { loanRequest?: LoanRequest }) => {
-            if (!event.loanRequest?.id) {
-                return;
-            }
-
-            if (lastLocallyDecidedRequestIdRef.current === event.loanRequest.id) {
-                lastLocallyDecidedRequestIdRef.current = null;
-            } else if (event.loanRequest.status === "approved") {
-                setToast({
-                    show: true,
-                    message: `${event.loanRequest.requester_name || "User"} បានអនុម័តសំណើរ`,
-                    type: "success",
-                });
-            } else if (event.loanRequest.status === "rejected") {
-                setToast({
-                    show: true,
-                    message: event.loanRequest.canceled_by_requester
-                        ? `${event.loanRequest.requester_name || "User"} បានបោះបង់សំណើរ`
-                        : `${event.loanRequest.requester_name || "User"} request rejected.`,
-                    type: event.loanRequest.canceled_by_requester ? "info" : "error",
-                });
-            }
-
-            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== event.loanRequest?.id));
-        };
-
-        channel.listen(".book-loan-request.created", handleCreatedEvent);
-        channel.listen(".book-loan-request.updated", handleUpdatedEvent);
-
-        return () => {
-            channel.stopListening(".book-loan-request.created");
-            channel.stopListening(".book-loan-request.updated");
-            echoInstance.leave(adminChannelName);
-        };
-    }, []);
-
-    useEffect(() => {
-        const intervalId = window.setInterval(() => {
-            if (decisionProcessingRequestId !== null || processing) {
-                return;
-            }
-
-            router.reload({
-                only: ["bookloans", "loanRequests"],
-                preserveScroll: true,
-                preserveState: true,
-            });
-        }, 1500);
-
-        return () => window.clearInterval(intervalId);
-    }, [decisionProcessingRequestId, processing]);
-
     const globalFilterFn = (row: Row<BookLoan>, columnId: string, filterValue: string) => {
         const search = String(filterValue).toLowerCase().trim();
         if (!search) return true;
@@ -806,79 +708,12 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
             });
         }
     };
-
-    const handleLoanRequestDecision = async (loanRequest: LoanRequest, decision: "approved" | "rejected") => {
-        if (decisionProcessingRequestId !== null) {
-            return;
-        }
-
-        lastLocallyDecidedRequestIdRef.current = loanRequest.id;
-        setDecisionProcessingRequestId(loanRequest.id);
-
-        try {
-            const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") ?? "";
-
-            const response = await fetch(route("bookloans.requests.decide", loanRequest.id), {
-                method: "PATCH",
-                credentials: "same-origin",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                    "X-CSRF-TOKEN": csrfToken,
-                    ...(echo?.socketId() ? { "X-Socket-Id": echo.socketId() as string } : {}),
-                },
-                body: JSON.stringify({ decision }),
-            });
-
-            const data = (await response.json()) as {
-                message?: string;
-                bookLoan?: BookLoan | null;
-            };
-
-            if (!response.ok) {
-                throw new Error(data.message || "Unable to update the request.");
-            }
-
-            if (data.bookLoan) {
-                setBookLoanRows((currentLoans) => {
-                    if (currentLoans.some((bookLoan) => bookLoan.id === data.bookLoan?.id)) {
-                        return currentLoans;
-                    }
-
-                    return [data.bookLoan as BookLoan, ...currentLoans];
-                });
-            }
-
-            setToast({
-                show: true,
-                message: data.message || (decision === "approved" ? "Request approved." : "Request rejected."),
-                type: decision === "approved" ? "success" : "error",
-            });
-
-            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== loanRequest.id));
-        } catch (error) {
-            setToast({
-                show: true,
-                message: error instanceof Error ? error.message : "Unable to update the request.",
-                type: "error",
-            });
-        } finally {
-            setDecisionProcessingRequestId(null);
-        }
-    };
-
     const breadcrumbs = [
         { title: t.title, href: route("bookloans.index") },
     ];
 
     return (
         <>
-            <Toast
-                show={toast.show}
-                message={toast.message}
-                type={toast.type}
-                onClose={() => setToast((current) => ({ ...current, show: false }))}
-            />
             <DataTable
                 data={bookLoanRows || []}
                 columns={columns}
@@ -900,50 +735,6 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
                 isSuperLibrarian={false}
                 globalFilterFn={globalFilterFn}
             />
-            {pendingLoanRequests.length > 0 && (
-                <div className="pointer-events-none fixed top-4 right-4 z-50 flex w-[min(92vw,24rem)] flex-col gap-3">
-                    {pendingLoanRequests.map((requestItem) => {
-                        const isProcessing = decisionProcessingRequestId === requestItem.id;
-
-                        return (
-                            <div
-                                key={requestItem.id}
-                                className="pointer-events-auto rounded-xl border border-indigo-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-indigo-700 dark:bg-gray-900/95"
-                            >
-                                <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">
-                                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">
-                                        {requestItem.requester_name || "A user"}
-                                    </span>{" "}
-                                    បានស្នើរសុំខ្ចីសៀវភៅ ចំណងជើង{" "}
-                                    <span className="font-semibold text-amber-600 dark:text-amber-300">
-                                        {requestItem.book_title || "this book"}
-                                    </span>
-                                        {/* ។ តើអ្នកចង់អនុម័តឬបដិសេធសំណើនេះ? */}
-                                </p>
-                                <div className="mt-3 flex items-center justify-end gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className={commonStyles.outlineButton}
-                                        onClick={() => handleLoanRequestDecision(requestItem, "rejected")}
-                                        disabled={decisionProcessingRequestId !== null}
-                                    >
-                                        ទេ
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        className={commonStyles.indigoButton}
-                                        onClick={() => handleLoanRequestDecision(requestItem, "approved")}
-                                        disabled={decisionProcessingRequestId !== null}
-                                    >
-                                        {isProcessing ? "កំពុងដំណើរការ..." : "យល់ព្រម"}
-                                    </Button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent className={commonStyles.gradientBg}>
                     <AlertDialogHeader>
@@ -978,3 +769,4 @@ export default function BookLoans({ bookloans = [], loanRequests = [], flash, la
         </>
     );
 }
+

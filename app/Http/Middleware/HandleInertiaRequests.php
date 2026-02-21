@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\BookLoanRequest;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -65,6 +66,36 @@ class HandleInertiaRequests extends Middleware
                 'location' => $request->url(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'adminLoanRequests' => function () use ($request) {
+                $user = $request->user();
+
+                if (! $user || ! $user->hasRole('admin')) {
+                    return [];
+                }
+
+                return BookLoanRequest::query()
+                    ->with(['book:id,title', 'requester:id,name'])
+                    ->pending()
+                    ->when($user->campus_id, function ($requestQuery, $campusId) {
+                        $requestQuery->where('campus_id', $campusId);
+                    })
+                    ->latest('created_at')
+                    ->get()
+                    ->map(function ($loanRequest) {
+                        return [
+                            'id' => $loanRequest->id,
+                            'book_id' => $loanRequest->book_id,
+                            'book_title' => $loanRequest->book?->title,
+                            'requester_id' => $loanRequest->requester_id,
+                            'requester_name' => $loanRequest->requester?->name,
+                            'status' => $loanRequest->status,
+                            'canceled_by_requester' => $loanRequest->status === 'rejected' && ! $loanRequest->approver_id,
+                            'created_at' => optional($loanRequest->created_at)->toIso8601String(),
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            },
         ];
     }
 }
