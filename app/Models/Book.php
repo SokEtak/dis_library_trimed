@@ -59,6 +59,7 @@ class Book extends Model
 
     // Casts for specific fields
     protected $casts = [
+        'view' => 'integer',
         'is_available' => 'boolean',
         'is_deleted' => 'boolean',
         'published_at' => 'integer',

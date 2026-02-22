@@ -124,6 +124,16 @@ const formatDate = (dateInput: string | number | undefined): string => {
     }
 };
 
+const toViewCount = (value: unknown): number => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return 0;
+    }
+
+    return parsed;
+};
+
 export default function Index() {
     const { books, flash, auth, scope, bookType = 'physical', lang = 'kh', canRequestLoan = false, loanRequests = {} } = usePage<PageProps>().props;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -584,8 +594,8 @@ export default function Index() {
             } else if (sortBy === 'Title A-Z') {
                 return a.title.localeCompare(b.title);
             } else if (sortBy === 'Most Viewed') {
-                const viewA = a.view ?? 0;
-                const viewB = b.view ?? 0;
+                const viewA = toViewCount(a.view);
+                const viewB = toViewCount(b.view);
                 return viewB - viewA;
             }
             return 0;
@@ -607,8 +617,21 @@ export default function Index() {
         scope,
     ]);
 
-    // Find the book with the highest view count
-    const maxViews = allFilteredBooks.length > 0 ? Math.max(...allFilteredBooks.map((b) => b.view ?? 0)) : 0;
+    const maxViews = useMemo(() => {
+        return allFilteredBooks.reduce((max, book) => Math.max(max, toViewCount(book.view)), 0);
+    }, [allFilteredBooks]);
+
+    const mostViewedBookIds = useMemo(() => {
+        if (maxViews <= 0) {
+            return new Set<number>();
+        }
+
+        return new Set(
+            allFilteredBooks
+                .filter((book) => toViewCount(book.view) === maxViews)
+                .map((book) => book.id),
+        );
+    }, [allFilteredBooks, maxViews]);
 
     const totalPages = books.last_page;
     const paginatedBooks = allFilteredBooks;
@@ -1194,7 +1217,7 @@ export default function Index() {
                                             </div>
                                         </div>
                                         {/* Most Viewed Badge */}
-                                        {book.view === maxViews && (
+                                        {mostViewedBookIds.has(book.id) && (
                                             <div className="absolute top-2 right-2 flex animate-pulse items-center space-x-1 rounded-xl border border-yellow-300 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-500 px-2.5 py-1 text-[10px] font-semibold text-gray-900 shadow-lg sm:text-xs dark:border-yellow-400 dark:from-yellow-500 dark:to-yellow-600">
                                                 <Crown className="h-3 w-3 text-yellow-700 dark:text-yellow-800" />
                                                 <span>{t.mostViewed}</span>
@@ -1293,4 +1316,3 @@ export default function Index() {
         </div>
     );
 }
-
