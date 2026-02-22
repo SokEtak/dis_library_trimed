@@ -136,7 +136,7 @@ export default function BooksShow({ book }: BooksShowProps) {
                                     { label: 'ចំណងជើង', value: book.title, field: 'title', copyable: true },
                                     { label: 'សេចក្ដីពិពណ៌នា', value: book.description || 'មិនមាន', field: 'description', copyable: true },
                                     { label: 'ចំនួនទំព័រ', value: book.page_count ? `${book.page_count} ទំព័រ` : 'មិនមាន', field: 'page_count' },
-                                    { label: 'អ្នកបោះពុម្ពផ្សាយ', value: book.publisher || 'មិនមាន', field: 'publisher' },
+                                    { label: 'បោះពុម្ពផ្សាយដោយដោយ', value: book.publisher || 'មិនមាន', field: 'publisher' },
                                     { label: 'ភាសា', value: book.language === 'en' ? 'អង់គ្លេស' : book.language === 'kh' ? 'ខ្មែរ' : 'មិនមាន', field: 'language' },
                                     { label: 'កម្មវិធី', value: book.program || 'មិនមាន', field: 'program' },
                                     { label: 'ថ្ងៃបោះពុម្ព', value: book.published_at ? new Date(book.published_at).toLocaleString('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'long', day: 'numeric' }) : 'មិនមាន', field: 'published_at' },

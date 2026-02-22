@@ -289,7 +289,7 @@ const getColumns = (
             accessorKey: 'publisher',
             header: ({ column }) => (
                 <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-                    បោះពុម្ពផ្សាយ
+                    បោះពុម្ពផ្សាយដោយ
                     {column.getIsSorted() === 'asc' ? (
                         <ArrowUp className="h-4 w-4" />
                     ) : column.getIsSorted() === 'desc' ? (
@@ -2016,7 +2016,7 @@ function BookIndex() {
                                                 {rowModal.description || 'N/A'}
                                             </p>
                                             <p>
-                                                <strong className="text-blue-600 dark:text-blue-300">បោះពុម្ពផ្សាយ:</strong>{' '}
+                                                <strong className="text-blue-600 dark:text-blue-300">បោះពុម្ពផ្សាយដោយ:</strong>{' '}
                                                 {rowModal.publisher || 'N/A'}
                                             </p>
                                             <p>

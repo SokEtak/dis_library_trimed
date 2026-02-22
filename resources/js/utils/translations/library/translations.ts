@@ -90,7 +90,7 @@ export const translations = {
         view_flipbook: 'អាន',
         download_pdf: 'ទាញយក',
         book_details: 'អំពីសៀវភៅ',
-        publisher: 'បោះពុម្ពផ្សាយ',
+        publisher: 'បោះពុម្ពផ្សាយដោយ',
         language: 'ភាសា',
         published_year: 'ឆ្នាំបោះពុម្ព',
         page_count: 'ចំនួនទំព័រ',

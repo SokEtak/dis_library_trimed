@@ -756,7 +756,7 @@ export default function Show({
             <div className="space-y-6 sm:space-y-8">
                 {/* CORE INFORMATION */}
                 <section className="rounded-xl border border-gray-200 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/60">
-                    <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{translations[language].general_information}</h4>
+                    <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{translations[language].general_information || ""}</h4>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <DetailItem label={translations[language].by} value={book.author || translations[language].unknown} index={index++} />
@@ -781,7 +781,7 @@ export default function Show({
 
                 {/* CLASSIFICATION */}
                 <section className="rounded-xl border border-gray-200 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/60">
-                    {/* <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{translations[language].classification || "ការចាត់ថ្នាក់"}</h4> */}
+                    <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{translations[language].classification || "ការចាត់ថ្នាក់"}</h4>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <DetailItem label={translations[language].category} value={book.category?.name} index={index++} />
@@ -1102,17 +1102,6 @@ export default function Show({
                                                 )}
                                             </div>
                                         </div>
-                                        {/* Availability ribbon */}
-                                        {/* <div
-                                            className={[
-                                                'absolute top-3 left-3 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:px-2.5 sm:py-1 sm:text-xs',
-                                                book.is_available ? 'bg-emerald-600/90 text-white' : 'bg-rose-600/90 text-white',
-                                            ].join(' ')}
-                                        >
-                                            {book.is_available
-                                                ? (translations[language].available ?? 'Available')
-                                                : (translations[language].not_available ?? 'Unavailable')}
-                                        </div> */}
                                     </div>
                                 </div>
 
