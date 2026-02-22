@@ -144,6 +144,7 @@ export default function Index() {
     const [requestingBookId, setRequestingBookId] = useState<number | null>(null);
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({ show: false, message: '' });
     const lastLocallyUpdatedLoanRequestIdRef = useRef<number | null>(null);
+    const inFlightLoanRequestBookIdsRef = useRef<Set<number>>(new Set());
     const searchWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const [language, setLanguage] = useState<'en' | 'kh'>(() => {
@@ -285,10 +286,15 @@ export default function Index() {
     }, [auth.user?.id, language]);
 
     const handleLoanRequest = async (bookId: number) => {
-        if (requestingBookId !== null) {
+        if (
+            requestingBookId !== null ||
+            loanRequestsByBookId[bookId]?.status === 'pending' ||
+            inFlightLoanRequestBookIdsRef.current.has(bookId)
+        ) {
             return;
         }
 
+        inFlightLoanRequestBookIdsRef.current.add(bookId);
         setRequestingBookId(bookId);
 
         try {
@@ -339,6 +345,7 @@ export default function Index() {
                 type: 'error',
             });
         } finally {
+            inFlightLoanRequestBookIdsRef.current.delete(bookId);
             setRequestingBookId(null);
         }
     };

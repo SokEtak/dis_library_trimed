@@ -10,6 +10,7 @@ use App\Models\BookLoan;
 use App\Models\BookLoanRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -54,14 +55,31 @@ class BookLoanRequestController extends Controller
                 ]);
             }
 
-            $newLoanRequest = BookLoanRequest::create([
-                'book_id' => $lockedBook->id,
-                'requester_id' => $user->id,
-                'campus_id' => $user->campus_id ?? $lockedBook->campus_id,
-                'status' => 'pending',
-            ])->load(['book:id,title', 'requester:id,name']);
+            try {
+                $newLoanRequest = BookLoanRequest::create([
+                    'book_id' => $lockedBook->id,
+                    'requester_id' => $user->id,
+                    'campus_id' => $user->campus_id ?? $lockedBook->campus_id,
+                    'status' => 'pending',
+                ])->load(['book:id,title', 'requester:id,name']);
 
-            return [$newLoanRequest, true];
+                return [$newLoanRequest, true];
+            } catch (QueryException $exception) {
+                // If a unique pending constraint is hit by concurrent requests,
+                // return the existing pending row instead of surfacing an error.
+                $concurrentPendingRequest = BookLoanRequest::query()
+                    ->where('book_id', $lockedBook->id)
+                    ->where('requester_id', $user->id)
+                    ->where('status', 'pending')
+                    ->latest('id')
+                    ->first();
+
+                if ($concurrentPendingRequest) {
+                    return [$concurrentPendingRequest->load(['book:id,title', 'requester:id,name']), false];
+                }
+
+                throw $exception;
+            }
         });
 
         if ($wasCreated) {
@@ -70,9 +88,7 @@ class BookLoanRequestController extends Controller
         }
 
         return response()->json([
-            'message' => $wasCreated
-                ? 'Loan request submitted.'
-                : 'You already have a pending request for this book.',
+            'message' => 'Loan request submitted.',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
             'already_pending' => ! $wasCreated,
         ], $wasCreated ? 201 : 200);
@@ -192,7 +208,7 @@ class BookLoanRequestController extends Controller
         broadcast(new DashboardSummaryUpdated('book-loan-request.cancel'));
 
         return response()->json([
-            'message' => 'Loan request canceled.',
+            'message' => 'សំណើរ​​ត្រូវ​បាន​បោះបង់',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
         ]);
     }
@@ -235,4 +251,6 @@ class BookLoanRequestController extends Controller
         ];
     }
 }
+
+
 

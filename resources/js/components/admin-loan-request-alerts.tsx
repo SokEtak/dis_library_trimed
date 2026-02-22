@@ -167,7 +167,7 @@ export default function AdminLoanRequestAlerts() {
                 setToast({
                     show: true,
                     message: event.loanRequest.canceled_by_requester
-                        ? `${event.loanRequest.requester_name || 'User'} canceled the request.`
+                        ? `${event.loanRequest.requester_name || 'User'} បានបោះបង់សំណើរ`
                         : `${event.loanRequest.requester_name || 'User'} request rejected.`,
                     type: event.loanRequest.canceled_by_requester ? 'info' : 'error',
                 });

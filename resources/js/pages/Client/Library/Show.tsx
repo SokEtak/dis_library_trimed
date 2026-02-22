@@ -203,6 +203,8 @@ export default function Show({
     const [requestingRelatedBookId, setRequestingRelatedBookId] = useState<number | null>(null);
     const lastNotifiedLoanSignatureRef = useRef<string>(`${loanRequest?.status ?? 'none'}:${loanRequest?.canceled_by_requester ? '1' : '0'}`);
     const lastLocallyUpdatedLoanRequestIdRef = useRef<number | null>(null);
+    const mainLoanRequestInFlightRef = useRef(false);
+    const relatedLoanRequestInFlightIdsRef = useRef<Set<number>>(new Set());
     const currentBookIdRef = useRef<number | undefined>(book?.id);
     const relatedBookIdSet = useMemo(() => {
         return new Set(
@@ -402,10 +404,11 @@ export default function Show({
     };
 
     const handleLoanRequest = async () => {
-        if (!book?.id || requestingLoan) {
+        if (!book?.id || requestingLoan || mainLoanRequestInFlightRef.current || loanRequestStatus === 'pending') {
             return;
         }
 
+        mainLoanRequestInFlightRef.current = true;
         setRequestingLoan(true);
 
         try {
@@ -443,6 +446,7 @@ export default function Show({
                 type: 'error',
             });
         } finally {
+            mainLoanRequestInFlightRef.current = false;
             setRequestingLoan(false);
         }
     };
@@ -496,9 +500,30 @@ export default function Show({
     };
 
     const handleRelatedLoanRequest = async (relatedBookId: number) => {
-        if (!relatedBookId || requestingRelatedBookId !== null || requestingLoan) {
+        if (
+            !relatedBookId ||
+            requestingRelatedBookId !== null ||
+            requestingLoan ||
+            relatedLoanRequestsByBookId[relatedBookId]?.status === 'pending' ||
+            relatedLoanRequestInFlightIdsRef.current.has(relatedBookId)
+        ) {
             return;
         }
+
+        relatedLoanRequestInFlightIdsRef.current.add(relatedBookId);
+        const previousRelatedLoanRequest = relatedLoanRequestsByBookId[relatedBookId] ?? null;
+
+        setRelatedLoanRequestsByBookId((currentRequests) => ({
+            ...currentRequests,
+            [relatedBookId]: {
+                id: currentRequests[relatedBookId]?.id ?? 0,
+                book_id: relatedBookId,
+                status: 'pending',
+                approver_id: null,
+                canceled_by_requester: false,
+                decided_at: null,
+            },
+        }));
 
         setRequestingRelatedBookId(relatedBookId);
 
@@ -540,12 +565,25 @@ export default function Show({
                 type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {
+            setRelatedLoanRequestsByBookId((currentRequests) => {
+                const nextRequests = { ...currentRequests };
+
+                if (previousRelatedLoanRequest) {
+                    nextRequests[relatedBookId] = previousRelatedLoanRequest;
+                } else {
+                    delete nextRequests[relatedBookId];
+                }
+
+                return nextRequests;
+            });
+
             setToast({
                 show: true,
                 message: error instanceof Error ? error.message : language === 'en' ? 'Failed to submit loan request.' : 'áž˜áž·áž“áž¢ាចáž•áŸ’áž‰áž¾ážŸáŸ†ážŽáž¾ážšáž”áž¶áž“áž‘áŸ',
                 type: 'error',
             });
         } finally {
+            relatedLoanRequestInFlightIdsRef.current.delete(relatedBookId);
             setRequestingRelatedBookId(null);
         }
     };
@@ -1170,6 +1208,7 @@ export default function Show({
                                         const isProcessingRelatedLoanRequest = requestingRelatedBookId === relatedBookId;
                                         const canShowRelatedLoanRequestButton =
                                             canRequestLoan && relatedBook.type === 'physical';
+                                        const shouldHideRelatedLoanAction = isPendingRelatedLoanRequest || isApprovedRelatedLoanRequest;
                                         const shouldDisableRelatedLoanRequestButton =
                                             requestingLoan ||
                                             requestingRelatedBookId !== null ||
@@ -1225,41 +1264,6 @@ export default function Show({
                                                         )}
                                                     </div>
                                                 </Link>
-                                                {canShowRelatedLoanRequestButton && (
-                                                    <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20 translate-y-2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(event) => {
-                                                                event.preventDefault();
-                                                                event.stopPropagation();
-
-                                                                if (isPendingRelatedLoanRequest) {
-                                                                    void handleCancelRelatedLoanRequest(relatedBookId);
-                                                                    return;
-                                                                }
-
-                                                                void handleRelatedLoanRequest(relatedBookId);
-                                                            }}
-                                                            disabled={shouldDisableRelatedLoanRequestButton}
-                                                            className={`pointer-events-auto w-full rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs ${
-                                                                isPendingRelatedLoanRequest
-                                                                    ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500'
-                                                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
-                                                            }`}
-                                                            aria-label={relatedLoanRequestLabel}
-                                                        >
-                                                            {isProcessingRelatedLoanRequest
-                                                                ? language === 'en'
-                                                                    ? isPendingRelatedLoanRequest
-                                                                        ? 'Canceling...'
-                                                                        : 'Requesting...'
-                                                                    : isPendingRelatedLoanRequest
-                                                                      ? '\u1780\u17c6\u1796\u17bb\u1784\u1794\u17c4\u17c7\u1794\u1784\u17cb\u179f\u17c6\u178e\u17be\u179a...'
-                                                                      : '\u1780\u17c6\u1796\u17bb\u1784\u178a\u17b6\u1780\u17cb\u179f\u17c6\u178e\u17be\u179a...'
-                                                                : relatedLoanRequestLabel}
-                                                        </button>
-                                                    </div>
-                                                )}
                                                 <span className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-transparent transition group-focus-within:ring-blue-300/60 dark:group-focus-within:ring-blue-900/40" />
                                             </div>
                                         );
