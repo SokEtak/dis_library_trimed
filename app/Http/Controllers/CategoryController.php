@@ -4,76 +4,130 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::all();
+        $categories = Category::query()->latest()->get();
 
         return Inertia::render('Categories/Index', [
             'categories' => $categories,
-            'flash' => ['message' => session('message')],
+            'flash' => [
+                'message' => session('flash.message') ?? session('message'),
+                'error' => session('flash.error'),
+            ],
         ]);
     }
 
     public function create()
     {
-        return Inertia::render('Categories/Create', [
-            'flash' => ['message' => session('message')],
-        ]);
+        return redirect()->route('categories.index', ['dialog' => 'create']);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100|unique:categories,name',
+            'name' => ['required', 'string', 'max:100', Rule::unique('categories', 'name')],
         ]);
 
-        Category::create($validated);
+        $category = Category::create($validated);
+        $message = 'Category created successfully.';
 
-        return redirect()->route('categories.index')->with('message', 'Category created successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $category,
+            ], 201);
+        }
+
+        return redirect()->route('categories.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     public function edit(Category $category)
     {
-        return Inertia::render('Categories/Edit', [
-            'category' => $category,
-            'flash' => ['message' => session('message')],
+        return redirect()->route('categories.index', [
+            'dialog' => 'edit',
+            'id' => $category->id,
         ]);
     }
 
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('categories', 'name')->ignore($category->id),
+            ],
         ]);
 
         $category->update($validated);
+        $message = 'Category updated successfully.';
 
-        return redirect()->route('categories.index')->with('message', 'Category updated successfully.');
-    }
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $category->fresh(),
+            ]);
+        }
 
-    public function show(Category $category)
-    {
-        return Inertia::render('Categories/Show', [
-            'category' => $category,
-            'flash' => ['message' => session('message')],
+        return redirect()->route('categories.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
         ]);
     }
 
-    public function destroy(Category $category)
+    public function show(Request $request, Category $category)
     {
-        // Optional: Check for related books to prevent deletion if referenced
-        // for safety delete
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $category,
+            ]);
+        }
+
+        return redirect()->route('categories.index', [
+            'dialog' => 'view',
+            'id' => $category->id,
+        ]);
+    }
+
+    public function destroy(Request $request, Category $category)
+    {
         if ($category->books()->exists()) {
-            return redirect()->route('categories.index')->with('message', 'Cannot delete category because it is referenced by books.');
+            $message = 'Cannot delete category because it is referenced by books.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('categories.index')->with('flash', [
+                'error' => $message,
+                'type' => 'error',
+            ]);
         }
 
         $category->delete();
+        $message = 'Category deleted successfully.';
 
-        return redirect()->route('categories.index')->with('message', 'Category deleted successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ]);
+        }
+
+        return redirect()->route('categories.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     /**
@@ -124,3 +178,4 @@ class CategoryController extends Controller
         }
     }
 }
+

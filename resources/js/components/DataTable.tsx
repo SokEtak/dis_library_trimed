@@ -22,7 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
@@ -51,6 +51,7 @@ import {
     useReactTable,
     VisibilityState,
     PaginationState,
+    Row,
     SortingState,
 } from "@tanstack/react-table";
 import {
@@ -70,8 +71,8 @@ import {
 // Interface definitions remain the same
 interface DataItem {
     id: number;
-    code: string;
-    [key: string]: any;
+    code?: string;
+    [key: string]: unknown;
 }
 
 interface DataTableProps<T extends DataItem> {
@@ -96,6 +97,10 @@ interface DataTableProps<T extends DataItem> {
     modalFields?: (item: T) => JSX.Element;
     tooltipFields?: (item: T) => JSX.Element;
     isSuperLibrarian?: boolean;
+    globalFilterFn?: (row: Row<T>, columnId: string, filterValue: string) => boolean;
+    onCreate?: () => void;
+    enableRowModal?: boolean;
+    onRowClick?: (item: T) => void;
 }
 
 // Re-introducing the common styles for the dynamic color theme
@@ -119,7 +124,10 @@ function DataTable<T extends DataItem>({
     routes,
     flash,
     modalFields,
-    isSuperLibrarian = false,
+    globalFilterFn,
+    onCreate,
+    enableRowModal = true,
+    onRowClick,
 }: DataTableProps<T>) {
     const { processing } = useForm();
     const [itemToDelete, setItemToDelete] = useState<T | null>(null);
@@ -129,7 +137,7 @@ function DataTable<T extends DataItem>({
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [importProcessing, setImportProcessing] = useState(false);
     const importFileInputRef = useRef<HTMLInputElement>(null);
-    const { data: importData, setData: setImportData, post: postImport, reset: resetImportForm } = useForm<{ import_file?: File }>({});
+    const { setData: setImportData, post: postImport, reset: resetImportForm } = useForm<{ import_file?: File }>({});
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
         const initial: VisibilityState = {};
 
@@ -176,13 +184,13 @@ function DataTable<T extends DataItem>({
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,
         onGlobalFilterChange: setGlobalFilter,
-        globalFilterFn: (row, columnId, filterValue) => {
+        globalFilterFn: globalFilterFn ?? ((row, columnId, filterValue) => {
             const search = String(filterValue).toLowerCase();
             const item = row.original;
             return Object.values(item).some((value) =>
                 String(value).toLowerCase().includes(search)
             );
-        },
+        }),
         state: {
             sorting,
             columnFilters,
@@ -370,16 +378,28 @@ function DataTable<T extends DataItem>({
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button
-                                                asChild
-                                                className={`${commonStyles.button} ${commonStyles.indigoButton}`}
-                                                disabled={isTableLoading || processing}
-                                                aria-label={`Add a new ${resourceName.slice(0, -1)}`}
-                                            >
-                                                <Link href={routes.create}>
+                                            {onCreate ? (
+                                                <Button
+                                                    type="button"
+                                                    onClick={onCreate}
+                                                    className={`${commonStyles.button} ${commonStyles.indigoButton}`}
+                                                    disabled={isTableLoading || processing}
+                                                    aria-label={`Add a new ${resourceName.slice(0, -1)}`}
+                                                >
                                                     <Plus className="h-4 w-4" />
-                                                </Link>
-                                            </Button>
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    asChild
+                                                    className={`${commonStyles.button} ${commonStyles.indigoButton}`}
+                                                    disabled={isTableLoading || processing}
+                                                    aria-label={`Add a new ${resourceName.slice(0, -1)}`}
+                                                >
+                                                    <Link href={routes.create}>
+                                                        <Plus className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                            )}
                                         </TooltipTrigger>
                                         <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
                                             <p>បន្ថែម{resourceName.slice(0, -1)}</p>
@@ -394,7 +414,7 @@ function DataTable<T extends DataItem>({
                                 {isTableLoading ? (
                                     <Skeleton className="h-4 w-32" />
                                 ) : (
-                                    `${table.getFilteredRowModel().rows.length} ${resourceName}​ បានរកឃើញ.`
+                                    `Found ${table.getFilteredRowModel().rows.length} ${resourceName}.`
                                 )}
                             </div>
                         </div>
@@ -507,7 +527,7 @@ function DataTable<T extends DataItem>({
                                             data-state={selectedRow?.id === row.original.id ? 'selected' : 'unselected'}
                                             className={[
                                                 // Base row styles
-                                                'transition-colors duration-150 cursor-pointer',
+                                                'transition-colors duration-150',
                                                 'border-b border-gray-200 dark:border-gray-700',
                                                 'hover:bg-gray-100 dark:hover:bg-gray-800/60',
                                                 // Selected row styles
@@ -523,6 +543,7 @@ function DataTable<T extends DataItem>({
                                                     : row.original.status === 'processing' && (!row.original.return_date || new Date(row.original.return_date) >= new Date())
                                                     ? 'bg-yellow-50 dark:bg-yellow-800/40 border-l-4 border-yellow-400 dark:border-yellow-700'
                                                     : '',
+                                                enableRowModal || onRowClick ? 'cursor-pointer' : 'cursor-default',
                                             ].join(' ')}
                                             style={{
                                                 boxShadow: row.original.status === 'canceled' ? '0 2px 8px 0 rgba(244, 63, 94, 0.08)' :
@@ -532,6 +553,11 @@ function DataTable<T extends DataItem>({
                                                     undefined
                                             }}
                                             onClick={() => {
+                                                if (onRowClick) {
+                                                    onRowClick(row.original);
+                                                    return;
+                                                }
+                                                if (!enableRowModal) return;
                                                 setRowModalOpen(true);
                                                 setSelectedRow(row.original);
                                             }}
@@ -623,36 +649,38 @@ function DataTable<T extends DataItem>({
                 </div>
 
                 {/* Row Details Modal */}
-                <Dialog open={rowModalOpen} onOpenChange={setRowModalOpen}>
+                {enableRowModal && (
+                    <Dialog open={rowModalOpen} onOpenChange={setRowModalOpen}>
 
-                    <DialogContent
-                        className="
-                        rounded-3xl
-                        p-6
-                        max-w-lg
-                        bg-gradient-to-br
-                        from-white to-indigo-50
-                        dark:from-gray-900 dark:to-indigo-950
-                        shadow-2xl
-                    "
-                    >
+                        <DialogContent
+                            className="
+                            rounded-3xl
+                            p-6
+                            max-w-lg
+                            bg-gradient-to-br
+                            from-white to-indigo-50
+                            dark:from-gray-900 dark:to-indigo-950
+                            shadow-2xl
+                        "
+                        >
 
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
-                                {selectedRow?.code || `${resourceName.slice(0, -1)} Details`}
-                            </DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 p-4">
-                            <div className="grid grid-cols-1 gap-2">
-                                <p className={commonStyles.text}>
-                                    <strong className="font-semibold text-indigo-500 dark:text-indigo-300">ID:</strong>{" "}
-                                    {selectedRow?.id || "N/A"}
-                                </p>
-                                {modalFields && selectedRow && modalFields(selectedRow)}
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
+                                    {selectedRow?.code || `${resourceName.slice(0, -1)} Details`}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 p-4">
+                                <div className="grid grid-cols-1 gap-2">
+                                    <p className={commonStyles.text}>
+                                        <strong className="font-semibold text-indigo-500 dark:text-indigo-300">ID:</strong>{" "}
+                                        {selectedRow?.id || "N/A"}
+                                    </p>
+                                    {modalFields && selectedRow && modalFields(selectedRow)}
+                                </div>
                             </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                        </DialogContent>
+                    </Dialog>
+                )}
 
                 {/* Delete Confirmation Dialog */}
                 {routes.destroy && (

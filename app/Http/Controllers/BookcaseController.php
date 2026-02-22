@@ -18,9 +18,12 @@ class BookcaseController extends Controller
     {
         $bookcases = Bookcase::forCurrentCampusWithBooks()->get();
 
-        // dd( $bookcases->toArray() );
         return Inertia::render('Bookcases/Index', [
             'bookcases' => $bookcases,
+            'flash' => [
+                'message' => session('flash.message') ?? session('message'),
+                'error' => session('flash.error'),
+            ],
         ]);
     }
 
@@ -29,30 +32,47 @@ class BookcaseController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Bookcases/Create');
+        return redirect()->route('bookcases.index', ['dialog' => 'create']);
     }
 
     /**
      * Store a newly created bookcase.
      */
-    public function store(StoreBookcaseRequest $request): RedirectResponse
+    public function store(StoreBookcaseRequest $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        Bookcase::create($request->validated() + ['campus_id' => Auth::user()->campus_id]);
+        $bookcase = Bookcase::create($request->validated() + ['campus_id' => Auth::user()->campus_id]);
+        $bookcase = Bookcase::forCurrentCampusWithBooks()->findOrFail($bookcase->id);
+        $message = 'Bookcase created successfully.';
 
-        return redirect()->route('bookcases.index')->with('message', 'Bookcase created successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $bookcase,
+            ], 201);
+        }
+
+        return redirect()->route('bookcases.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     /**
      * Display the specified bookcase.
      */
-    public function show(Bookcase $bookcase)
+    public function show(Request $request, Bookcase $bookcase)
     {
-
         $bookcase = Bookcase::forCurrentCampusWithBooks()->findOrFail($bookcase->id);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $bookcase,
+            ]);
+        }
 
         return Inertia::render('Bookcases/Show', [
             'bookcase' => $bookcase,
-            'flash' => ['message' => session('message')],
+            'flash' => ['message' => session('flash.message') ?? session('message')],
         ]);
     }
 
@@ -65,22 +85,81 @@ class BookcaseController extends Controller
             return abort(404, 'Not Found.');
         }
 
-        return Inertia::render('Bookcases/Edit', [
-            'bookcase' => $bookcase,
-            'flash' => ['message' => session('message')],
+        return redirect()->route('bookcases.index', [
+            'dialog' => 'edit',
+            'id' => $bookcase->id,
         ]);
     }
 
     /**
      * Update the specified bookcase.
      */
-    public function update(Request $request, Bookcase $bookcase): RedirectResponse
+    public function update(Request $request, Bookcase $bookcase): RedirectResponse|\Illuminate\Http\JsonResponse
     {
+        if ($bookcase->campus_id !== Auth::user()->campus_id) {
+            return abort(404, 'Not Found.');
+        }
+
         $bookcase->update($request->validate([
             'code' => 'required|string|max:255',
         ]));
 
-        return redirect()->route('bookcases.index')->with('message', 'Bookcase updated successfully.');
+        $bookcase = Bookcase::forCurrentCampusWithBooks()->findOrFail($bookcase->id);
+        $message = 'Bookcase updated successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $bookcase,
+            ]);
+        }
+
+        return redirect()->route('bookcases.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Remove the specified bookcase.
+     */
+    public function destroy(Request $request, Bookcase $bookcase): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        if ($bookcase->campus_id !== Auth::user()->campus_id) {
+            return abort(404, 'Not Found.');
+        }
+
+        $hasActiveBooks = $bookcase->books()->physicalAndActiveForCampus()->exists();
+        $hasShelves = $bookcase->shelves()->exists();
+
+        if ($hasActiveBooks || $hasShelves) {
+            $message = 'Cannot delete bookcase because it is still referenced by shelves or active books.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('bookcases.index')->with('flash', [
+                'error' => $message,
+                'type' => 'error',
+            ]);
+        }
+
+        $bookcase->delete();
+        $message = 'Bookcase deleted successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ]);
+        }
+
+        return redirect()->route('bookcases.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     /**
@@ -131,3 +210,4 @@ class BookcaseController extends Controller
         }
     }
 }
+

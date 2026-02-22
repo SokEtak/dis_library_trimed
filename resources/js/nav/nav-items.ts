@@ -117,7 +117,7 @@ export const navGroups: NavGroup[] = [
                 children: [
                     {
                         title: "បន្ថែមប្រភេទ",
-                        url: route("categories.create"),
+                        url: route("categories.index", { dialog: "create" }),
                         icon: BookOpenCheck,
                         iconColor: "text-orange-600",
                     },
@@ -131,7 +131,7 @@ export const navGroups: NavGroup[] = [
                 children: [
                     {
                         title: "បន្ថែមប្រភេទរង",
-                        url: route("subcategories.create"),
+                        url: route("subcategories.index", { dialog: "create" }),
                         icon: BookOpenCheck,
                         iconColor: "text-orange-600",
                     },
@@ -145,7 +145,7 @@ export const navGroups: NavGroup[] = [
                 children: [
                     {
                         title: "បន្ថែមទូរសៀវភៅ",
-                        url: route("bookcases.create"),
+                        url: route("bookcases.index", { dialog: "create" }),
                         icon: BookOpenCheck,
                         iconColor: "text-orange-600",
                     },
@@ -159,7 +159,7 @@ export const navGroups: NavGroup[] = [
                 children: [
                     {
                         title: "បន្ថែមថតសៀវភៅ",
-                        url: route("shelves.create"),
+                        url: route("shelves.index", { dialog: "create" }),
                         icon: BookOpenCheck,
                         iconColor: "text-orange-600",
                     },
@@ -173,7 +173,7 @@ export const navGroups: NavGroup[] = [
                 iconColor: "text-orange-500",
                 children: [
                     {
-                        title: "បន្ថែមអ្នកគណនី",
+                        title: "បន្ថែគណនី",
                         url: route("users.create"),
                         icon: UserRoundPlus,
                         iconColor: "text-orange-600",

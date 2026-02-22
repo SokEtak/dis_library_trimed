@@ -785,61 +785,61 @@ const getColumns = (
         //         },
         //     ]
         //     : []),
-        // {
-        //     accessorKey: 'category',
-        //     header: ({ column }) => {
-        //         const filterValue = (column.getFilterValue() || '') as string;
-        //         const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+        {
+            accessorKey: 'category',
+            header: ({ column }) => {
+                const filterValue = (column.getFilterValue() || '') as string;
+                const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
-        //         return (
-        //             <div className="flex items-center space-x-2">
-        //                 <span>ប្រភេទ</span>
-        //                 <DropdownMenu open={isCategoryDropdownOpen} onOpenChange={setIsCategoryDropdownOpen}>
-        //                     <TooltipProvider>
-        //                         <Tooltip>
-        //                             <TooltipTrigger asChild>
-        //                                 <DropdownMenuTrigger asChild>
-        //                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 data-[state=open]:bg-accent">
-        //                                         <FilterIcon className={`h-4 w-4 ${filterValue ? 'text-blue-500' : 'text-gray-400'}`} />
-        //                                         <span className="sr-only">Open filter menu</span>
-        //                                     </Button>
-        //                                 </DropdownMenuTrigger>
-        //                             </TooltipTrigger>
-        //                             <TooltipContent>Filter by Category</TooltipContent>
-        //                         </Tooltip>
-        //                     </TooltipProvider>
-        //                     <DropdownMenuContent align="start" className="w-[180px] p-2">
-        //                         <Select
-        //                             value={filterValue}
-        //                             onValueChange={(value) => {
-        //                                 column.setFilterValue(value === 'All' ? '' : value);
-        //                                 setIsCategoryDropdownOpen(false);
-        //                             }}
-        //                         >
-        //                             <SelectTrigger className="w-full">
-        //                                 <SelectValue placeholder="ជ្រើសរើសប្រភេទ" />
-        //                             </SelectTrigger>
-        //                             <SelectContent>
-        //                                 <SelectItem value="All">ប្រភេទទាំងអស់</SelectItem>
-        //                                 {availableCategories.map((category) => (
-        //                                     <SelectItem key={category.id} value={category.name}>
-        //                                         {category.name}
-        //                                     </SelectItem>
-        //                                 ))}
-        //                             </SelectContent>
-        //                         </Select>
-        //                     </DropdownMenuContent>
-        //                 </DropdownMenu>
-        //             </div>
-        //         );
-        //     },
-        //     cell: ({ row }) => <div className="px-2">{row.original.category?.name || 'N/A'}</div>,
-        //     filterFn: (row, columnId, filterValue) => {
-        //         const categoryName = row.original.category?.name?.toLowerCase() || '';
-        //         return categoryName.includes(String(filterValue).toLowerCase());
-        //     },
-        //     enableSorting: false,
-        // },
+                return (
+                    <div className="flex items-center space-x-2">
+                        <span>ប្រភេទ</span>
+                        <DropdownMenu open={isCategoryDropdownOpen} onOpenChange={setIsCategoryDropdownOpen}>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 data-[state=open]:bg-accent">
+                                                <FilterIcon className={`h-4 w-4 ${filterValue ? 'text-blue-500' : 'text-gray-400'}`} />
+                                                <span className="sr-only">Open filter menu</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Filter by Category</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent align="start" className="w-[180px] p-2">
+                                <Select
+                                    value={filterValue}
+                                    onValueChange={(value) => {
+                                        column.setFilterValue(value === 'All' ? '' : value);
+                                        setIsCategoryDropdownOpen(false);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="ជ្រើសរើសប្រភេទ" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="All">ប្រភេទទាំងអស់</SelectItem>
+                                        {availableCategories.map((category) => (
+                                            <SelectItem key={category.id} value={category.name}>
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+            cell: ({ row }) => <div className="px-2">{row.original.category?.name || 'N/A'}</div>,
+            filterFn: (row, columnId, filterValue) => {
+                const categoryName = row.original.category?.name?.toLowerCase() || '';
+                return categoryName.includes(String(filterValue).toLowerCase());
+            },
+            enableSorting: false,
+        },
         {
             accessorKey: 'bookcase',
             header: ({ column }) => {
@@ -1018,70 +1018,70 @@ const getColumns = (
         //         },
         //     ]
         //     : []),
-        // {
-        //     accessorKey: 'subcategory',
-        //     header: ({ column }) => {
-        //         const filterValue = (column.getFilterValue() || '') as string;
-        //         const [isSubcategoryDropdownOpen, setIsSubcategoryDropdownOpen] = useState(false);
-        //         const subcategories = Array.isArray(availableSubcategories) ? availableSubcategories : [];
+        {
+            accessorKey: 'subcategory',
+            header: ({ column }) => {
+                const filterValue = (column.getFilterValue() || '') as string;
+                const [isSubcategoryDropdownOpen, setIsSubcategoryDropdownOpen] = useState(false);
+                const subcategories = Array.isArray(availableSubcategories) ? availableSubcategories : [];
 
-        //         return (
-        //             <div className="flex items-center space-x-2">
-        //                 <span>ប្រភេទរង</span>
-        //                 <DropdownMenu open={isSubcategoryDropdownOpen} onOpenChange={setIsSubcategoryDropdownOpen}>
-        //                     <TooltipProvider>
-        //                         <Tooltip>
-        //                             <TooltipTrigger asChild>
-        //                                 <DropdownMenuTrigger asChild>
-        //                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 data-[state=open]:bg-accent">
-        //                                         <FilterIcon className={`h-4 w-4 ${filterValue ? 'text-blue-500' : 'text-gray-400'}`} />
-        //                                         <span className="sr-only">Open filter menu</span>
-        //                                     </Button>
-        //                                 </DropdownMenuTrigger>
-        //                             </TooltipTrigger>
-        //                             <TooltipContent>Filter by Subcategory</TooltipContent>
-        //                         </Tooltip>
-        //                     </TooltipProvider>
-        //                     <DropdownMenuContent align="start" className="w-[180px] p-2">
-        //                         <Select
-        //                             value={filterValue}
-        //                             onValueChange={(value) => {
-        //                                 column.setFilterValue(value === 'All' ? '' : value);
-        //                                 setIsSubcategoryDropdownOpen(false);
-        //                             }}
-        //                         >
-        //                             <SelectTrigger className="w-full">
-        //                                 <SelectValue placeholder="ប្រភេទរង" />
-        //                             </SelectTrigger>
-        //                             <SelectContent>
-        //                                 <SelectItem value="All">All Subcategories</SelectItem>
-        //                                 {subcategories.length > 0 ? (
-        //                                     subcategories.map((subcategory) => (
-        //                                         <SelectItem key={subcategory.id} value={subcategory.name}>
-        //                                             {subcategory.name}
-        //                                         </SelectItem>
-        //                                     ))
-        //                                 ) : (
-        //                                     <SelectItem value="none" disabled>
-        //                                         គ្មានប្រភេទរងសម្រាប់ជ្រើសរើស
-        //                                     </SelectItem>
-        //                                 )}
-        //                             </SelectContent>
-        //                         </Select>
-        //                     </DropdownMenuContent>
-        //                 </DropdownMenu>
-        //             </div>
-        //         );
-        //     },
-        //     cell: ({ row }) => <div className="px-2">{row.original.subcategory?.name || 'N/A'}</div>,
-        //     filterFn: (row, columnId, filterValue) => {
-        //         if (!filterValue || filterValue === 'All') return true;
-        //         const subcategoryName = row.original.subcategory?.name?.toLowerCase() || '';
-        //         return subcategoryName.includes(String(filterValue).toLowerCase());
-        //     },
-        //     enableSorting: false,
-        //     enableHiding: true,
-        // },
+                return (
+                    <div className="flex items-center space-x-2">
+                        <span>ប្រភេទរង</span>
+                        <DropdownMenu open={isSubcategoryDropdownOpen} onOpenChange={setIsSubcategoryDropdownOpen}>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 data-[state=open]:bg-accent">
+                                                <FilterIcon className={`h-4 w-4 ${filterValue ? 'text-blue-500' : 'text-gray-400'}`} />
+                                                <span className="sr-only">Open filter menu</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Filter by Subcategory</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent align="start" className="w-[180px] p-2">
+                                <Select
+                                    value={filterValue}
+                                    onValueChange={(value) => {
+                                        column.setFilterValue(value === 'All' ? '' : value);
+                                        setIsSubcategoryDropdownOpen(false);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="ប្រភេទរង" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="All">All Subcategories</SelectItem>
+                                        {subcategories.length > 0 ? (
+                                            subcategories.map((subcategory) => (
+                                                <SelectItem key={subcategory.id} value={subcategory.name}>
+                                                    {subcategory.name}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <SelectItem value="none" disabled>
+                                                គ្មានប្រភេទរងសម្រាប់ជ្រើសរើស
+                                            </SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+            cell: ({ row }) => <div className="px-2">{row.original.subcategory?.name || 'N/A'}</div>,
+            filterFn: (row, columnId, filterValue) => {
+                if (!filterValue || filterValue === 'All') return true;
+                const subcategoryName = row.original.subcategory?.name?.toLowerCase() || '';
+                return subcategoryName.includes(String(filterValue).toLowerCase());
+            },
+            enableSorting: false,
+            enableHiding: true,
+        },
         {
             accessorKey: 'grade',
             header: ({ column }) => {
@@ -2043,8 +2043,8 @@ function BookIndex() {
                                     </TabsContent>
                                     <TabsContent value="classify">
                                         <div className="space-y-2">
-                                            {/* <p><strong className="text-blue-600 dark:text-blue-300">ប្រភេទ:</strong> {rowModal.category ? (<Link href={route('categories.show', rowModal.category.id)} className="text-blue-500 underline hover:text-blue-700 dark:text-blue-200 dark:hover:text-blue-100">{rowModal.category.name}</Link>) : 'N/A'}</p>
-                                                <p><strong className="text-blue-600 dark:text-blue-300">ប្រភេទរង:</strong> {rowModal.subcategory ? (<Link href={route('subcategories.show', rowModal.subcategory.id)} className="text-blue-500 underline hover:text-blue-700 dark:text-blue-200 dark:hover:text-blue-100">{rowModal.subcategory.name}</Link>) : 'N/A'}</p> */}
+                                            <p><strong className="text-blue-600 dark:text-blue-300">ប្រភេទ:</strong> {rowModal.category ? (<Link href={route('categories.show', rowModal.category.id)} className="text-blue-500 underline hover:text-blue-700 dark:text-blue-200 dark:hover:text-blue-100">{rowModal.category.name}</Link>) : 'N/A'}</p>
+                                                <p><strong className="text-blue-600 dark:text-blue-300">ប្រភេទរង:</strong> {rowModal.subcategory ? (<Link href={route('subcategories.show', rowModal.subcategory.id)} className="text-blue-500 underline hover:text-blue-700 dark:text-blue-200 dark:hover:text-blue-100">{rowModal.subcategory.name}</Link>) : 'N/A'}</p>
                                             <p>
                                                 <strong className="text-blue-600 dark:text-blue-300">កម្រិតថ្នាក់:</strong>{' '}
                                                 {rowModal.grade?.name || 'N/A'}

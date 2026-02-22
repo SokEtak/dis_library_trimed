@@ -18,9 +18,13 @@ class ShelvesController extends Controller
     {
         $shelves = Shelf::forCurrentCampusWithActiveBooks()->get();
 
-        // dd( $shelves->toArray() );
         return Inertia::render('Shelves/Index', [
             'shelves' => $shelves,
+            'bookcases' => $this->getBookcasesForCampus(),
+            'flash' => [
+                'message' => session('flash.message') ?? session('message'),
+                'error' => session('flash.error'),
+            ],
         ]);
     }
 
@@ -29,16 +33,13 @@ class ShelvesController extends Controller
      */
     public function create()
     {
-
-        return Inertia::render('Shelves/Create', [
-            'bookcases' => $this->getBookcasesForCampus(),
-        ]);
+        return redirect()->route('shelves.index', ['dialog' => 'create']);
     }
 
     /**
      * Display the specified shelf.
      */
-    public function show(Shelf $shelf)
+    public function show(Request $request, Shelf $shelf)
     {
         if (! $this->belongsToUserCampus($shelf)) {
             return abort(404, 'Not Found');
@@ -46,15 +47,22 @@ class ShelvesController extends Controller
 
         $shelf->loadActiveBooks();
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $shelf,
+            ]);
+        }
+
         return Inertia::render('Shelves/Show', [
             'shelf' => $shelf,
+            'flash' => ['message' => session('flash.message') ?? session('message')],
         ]);
     }
 
     /**
      * Store a newly created shelf.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'code' => 'required|string|max:10',
@@ -69,9 +77,21 @@ class ShelvesController extends Controller
             ],
         ]);
 
-        Shelf::create($validated + ['campus_id' => Auth::user()->campus_id]);
+        $shelf = Shelf::create($validated + ['campus_id' => Auth::user()->campus_id]);
+        $shelf->loadActiveBooks();
+        $message = 'Shelf created successfully.';
 
-        return redirect()->route('shelves.index')->with('message', 'Shelf created successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $shelf,
+            ], 201);
+        }
+
+        return redirect()->route('shelves.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     /**
@@ -83,18 +103,21 @@ class ShelvesController extends Controller
             return abort(404, 'Not Found');
         }
 
-        return Inertia::render('Shelves/Edit', [
-            'shelf' => $shelf,
-            'bookcases' => $this->getBookcasesForCampus(),
-            'flash' => ['message' => session('message')],
+        return redirect()->route('shelves.index', [
+            'dialog' => 'edit',
+            'id' => $shelf->id,
         ]);
     }
 
     /**
      * Update the specified shelf.
      */
-    public function update(Request $request, Shelf $shelf): RedirectResponse
+    public function update(Request $request, Shelf $shelf): RedirectResponse|\Illuminate\Http\JsonResponse
     {
+        if (! $this->belongsToUserCampus($shelf)) {
+            return abort(404, 'Not Found');
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:255',
             'bookcase_id' => [
@@ -109,8 +132,64 @@ class ShelvesController extends Controller
         ]);
 
         $shelf->update($validated);
+        $shelf->loadActiveBooks();
+        $message = 'Shelf updated successfully.';
 
-        return redirect()->route('shelves.show', $shelf->id)->with('message', 'Shelf updated successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $shelf,
+            ]);
+        }
+
+        return redirect()->route('shelves.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Remove the specified shelf.
+     */
+    public function destroy(Request $request, Shelf $shelf): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        if (! $this->belongsToUserCampus($shelf)) {
+            return abort(404, 'Not Found');
+        }
+
+        $hasActiveBooks = $shelf->books()
+            ->where('is_deleted', 0)
+            ->where('campus_id', Auth::user()->campus_id)
+            ->exists();
+
+        if ($hasActiveBooks) {
+            $message = 'Cannot delete shelf because it still contains active books.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('shelves.index')->with('flash', [
+                'error' => $message,
+                'type' => 'error',
+            ]);
+        }
+
+        $shelf->delete();
+        $message = 'Shelf deleted successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ]);
+        }
+
+        return redirect()->route('shelves.index')->with('flash', [
+            'message' => $message,
+            'type' => 'success',
+        ]);
     }
 
     /**
@@ -186,6 +265,7 @@ class ShelvesController extends Controller
     {
         return Bookcase::select('id', 'code')
             ->where('campus_id', Auth::user()->campus_id)
+            ->orderBy('code')
             ->get();
     }
 
@@ -199,3 +279,4 @@ class ShelvesController extends Controller
         return $bookcase && $bookcase->campus_id === Auth::user()->campus_id;
     }
 }
+

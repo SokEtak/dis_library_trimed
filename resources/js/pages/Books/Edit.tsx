@@ -1168,7 +1168,7 @@ export default function BooksEdit({
                                     <Label htmlFor="category" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                         {t.category} <span className="text-red-500">*</span>
                                      (<Link
-                                        href={route('categories.create')}
+                                        href={route('categories.index', { dialog: 'create' })}
                                         className="mt-1 inline-block text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                         preserveState
                                         preserveScroll
@@ -1261,7 +1261,7 @@ export default function BooksEdit({
                                     <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                         {t.subcategory+" "}
                                         (<Link
-                                        href={route('subcategories.create')}
+                                        href={route('subcategories.index', { dialog: 'create' })}
                                         className="mt-1 inline-block text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                         preserveState
                                         preserveScroll
@@ -1367,7 +1367,7 @@ export default function BooksEdit({
                                             <Label htmlFor="bookcase" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                                 {t.bookcase} <span className="text-red-500">*</span>
                                                 (<Link
-                                                href={route('bookcases.create')}
+                                                href={route('bookcases.index', { dialog: 'create' })}
                                                 className="mt-1 inline-block text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                 preserveState
                                                 preserveScroll
@@ -1421,7 +1421,7 @@ export default function BooksEdit({
                                             <Label htmlFor="shelf" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                                 {t.shelf} <span className="text-red-500">*</span>
                                                 (<Link
-                                                    href={route('shelves.create')}
+                                                    href={route('shelves.index', { dialog: 'create' })}
                                                     className="mt-1 inline-block text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                     preserveState
                                                     preserveScroll
