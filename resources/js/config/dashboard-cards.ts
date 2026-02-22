@@ -42,22 +42,6 @@ export const dashboardCards = [
         tooltip: 'សៀវភៅដែលត្រូវបានបោះបង់',
         colors: { bg: 'bg-gray-200 dark:bg-gray-800/50', border: 'border-gray-400 dark:border-gray-700', tooltipBg: 'bg-gray-700', tooltipArrow: 'fill-gray-700', icon: 'text-gray-700 dark:text-gray-300' },
     },
-    {
-        title: 'សៀវភៅបាត់/មិនមាន',
-        value: (stats: any) => stats.bookStats?.missingBookCount ?? 0,
-        Icon: AlertCircle,
-        href: route('books.index', { type: 'miss' }),
-        tooltip: 'សៀវភៅដែលបាត់ ឬមិនមាននៅទូ',
-        colors: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', border: 'border-yellow-300 dark:border-yellow-700', tooltipBg: 'bg-yellow-600', tooltipArrow: 'fill-yellow-600', icon: 'text-yellow-700 dark:text-yellow-300' },
-    },
-    {
-    title: 'សៀវភៅបាត់',
-    value: (stats: any) => stats.bookStats?.missingBookCount ?? 0,
-    Icon: AlertCircle,
-    href: route('books.index', { status: 'overdue' }),
-    tooltip: 'សៀវភៅដែលបានខ្ចី ប៉ុន្តែមិនបានត្រឡប់វិញ',
-    },
-
     
     {
         title: 'កំពុងខ្ចីសរុប',
@@ -86,11 +70,11 @@ export const dashboardCards = [
         colors: { bg: 'bg-cyan-100 dark:bg-cyan-900/50', border: 'border-cyan-300 dark:border-cyan-700', tooltipBg: 'bg-cyan-600', tooltipArrow: 'fill-cyan-600', icon: 'text-cyan-600 dark:text-cyan-400' },
     },
     {
-        title: 'ប្រភេទរង',
+        title: 'ប្រភេទរងសៀវភៅ',
         value: (stats: any) => stats.extraStats?.subcategoryCount ?? 0,
         Icon: Layers3,
         href: route('subcategories.index'),
-        tooltip: 'គ្រប់គ្រងប្រភេទរង',
+        tooltip: 'គ្រប់គ្រងប្រភេទរងសៀវភៅ',
         colors: { bg: 'bg-teal-100 dark:bg-teal-900/50', border: 'border-teal-300 dark:border-teal-700', tooltipBg: 'bg-teal-600', tooltipArrow: 'fill-teal-600', icon: 'text-teal-600 dark:text-teal-400' },
     },
     {
@@ -122,14 +106,14 @@ export const dashboardCards = [
     },
 
     // School & Buildings
-    {
-        title: 'សាលារៀនសរុប',
-        value: (stats: any) => stats.schoolStats?.totalSchools ?? 0,
-        Icon: GraduationCap,
-        href: route('schools.index'),
-        tooltip: 'មើលសាលារៀនទាំងអស់',
-        colors: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', border: 'border-emerald-300 dark:border-emerald-700', tooltipBg: 'bg-emerald-600', tooltipArrow: 'fill-emerald-600', icon: 'text-emerald-600 dark:text-emerald-400' },
-    },
+    // {
+    //     title: 'សាលារៀនសរុប',
+    //     value: (stats: any) => stats.schoolStats?.totalSchools ?? 0,
+    //     Icon: GraduationCap,
+    //     href: route('schools.index'),
+    //     tooltip: 'មើលសាលារៀនទាំងអស់',
+    //     colors: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', border: 'border-emerald-300 dark:border-emerald-700', tooltipBg: 'bg-emerald-600', tooltipArrow: 'fill-emerald-600', icon: 'text-emerald-600 dark:text-emerald-400' },
+    // },
     // {
     //     title: 'បន្ទប់សរុប',
     //     value: (stats: any) => stats.schoolStats?.totalRooms ?? 0,
@@ -138,14 +122,14 @@ export const dashboardCards = [
     //     tooltip: 'មើលបន្ទប់ទាំងអស់',
     //     colors: { bg: 'bg-indigo-100 dark:bg-indigo-900/50', border: 'border-indigo-300 dark:border-indigo-700', tooltipBg: 'bg-indigo-600', tooltipArrow: 'fill-indigo-600', icon: 'text-indigo-600 dark:text-indigo-400' },
     // },
-    {
-        title: 'សាខា',
-        value: (stats: any) => stats.extraStats?.campusCount ?? 0,
-        Icon: MapPinHouse,
-        href: route('campuses.index'),
-        tooltip: 'គ្រប់គ្រងសាខា',
-        colors: { bg: 'bg-sky-100 dark:bg-sky-900/50', border: 'border-sky-300 dark:border-sky-700', tooltipBg: 'bg-sky-600', tooltipArrow: 'fill-sky-600', icon: 'text-sky-600 dark:text-sky-400' },
-    },
+    // {
+    //     title: 'សាខា',
+    //     value: (stats: any) => stats.extraStats?.campusCount ?? 0,
+    //     Icon: MapPinHouse,
+    //     href: route('campuses.index'),
+    //     tooltip: 'គ្រប់គ្រងសាខា',
+    //     colors: { bg: 'bg-sky-100 dark:bg-sky-900/50', border: 'border-sky-300 dark:border-sky-700', tooltipBg: 'bg-sky-600', tooltipArrow: 'fill-sky-600', icon: 'text-sky-600 dark:text-sky-400' },
+    // },
     // {
     //     title: 'អគារ',
     //     value: (stats: any) => stats.extraStats?.buildingCount ?? 0,
