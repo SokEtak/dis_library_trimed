@@ -63,7 +63,7 @@ export const dashboardCards = [
         title: 'កំពុងខ្ចីសរុប',
         value: (stats: any) => stats.bookStats?.bookLoansCount ?? 0,
         Icon: Book,
-        href: route('bookloans.index'),
+        href: route('bookloans.index', { status: 'processing' }),
         tooltip: 'សៀវភៅដែលកំពុងខ្ចីទាំងអស់',
         colors: { bg: 'bg-purple-100 dark:bg-purple-900/50', border: 'border-purple-300 dark:border-purple-700', tooltipBg: 'bg-purple-600', tooltipArrow: 'fill-purple-600', icon: 'text-purple-600 dark:text-purple-400' },
     },
