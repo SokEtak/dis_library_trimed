@@ -26,7 +26,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CheckCircle2Icon, X, ChevronDown, ClockIcon, CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { CheckCircle2Icon, X, ChevronDown, ClockIcon, CheckCircleIcon, XCircleIcon, Check } from "lucide-react";
 import translations from "@/utils/translations/bookloan/bookloansEditTranslations";
 
 interface User {
@@ -43,7 +43,8 @@ interface BookLoan {
     id: number;
     return_date: string;
     returned_at: string | null;
-    book_id: number;
+    book_id: number | null;
+    books?: Book[];
     user_id: number;
     book: Book | null;
     user: User | null;
@@ -65,9 +66,14 @@ const statusOptions = [
 
 export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookLoansEditProps) {
     const t = translations[lang];
+    const initialBookIds = loan.books && loan.books.length > 0
+        ? loan.books.map((book) => book.id.toString())
+        : loan.book_id
+            ? [loan.book_id.toString()]
+            : [];
     const { data, setData, put, processing, errors } = useForm({
         return_date: loan.return_date || "",
-        book_id: loan.book_id.toString(),
+        book_ids: initialBookIds,
         user_id: loan.user_id.toString(),
         status: loan.status || "processing",
     });
@@ -75,6 +81,18 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
     const [openBook, setOpenBook] = useState(false);
     const [openUser, setOpenUser] = useState(false);
     const [openStatus, setOpenStatus] = useState(false);
+    const bookError = Object.entries(errors)
+        .filter(([key]) => key === "book_ids" || key.startsWith("book_ids."))
+        .map(([, message]) => message)
+        .filter(Boolean)
+        .join(", ");
+    const selectedBooks = books.filter((book) => data.book_ids.includes(book.id.toString()));
+    const selectedBooksLabel =
+        selectedBooks.length === 0
+            ? t.bookPlaceholder
+            : selectedBooks.length === 1
+                ? selectedBooks[0].title
+                : `${selectedBooks[0].title} +${selectedBooks.length - 1}`;
 
     useEffect(() => {
         setShowErrorAlert(!!Object.keys(errors).length);
@@ -175,7 +193,7 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
                         </div>
                         <div className="space-y-2">
                             <label
-                                htmlFor="book_id"
+                                htmlFor="book_ids"
                                 className="text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
                                 {t.book}
@@ -189,14 +207,12 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
                                                     variant="outline"
                                                     role="combobox"
                                                     aria-expanded={openBook}
-                                                    className={`w-full justify-between px-4 py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border ${errors.book_id
+                                                    className={`w-full justify-between px-4 py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border ${bookError
                                                         ? "border-red-500 dark:border-red-400"
                                                         : "border-gray-300 dark:border-gray-600"} focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all duration-300 ease-in-out`}
                                                     disabled={processing}
                                                 >
-                                                    {data.book_id !== ""
-                                                        ? books.find((book) => book.id.toString() === data.book_id)?.title
-                                                        : t.bookPlaceholder}
+                                                    {selectedBooksLabel}
                                                     <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
@@ -212,15 +228,35 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
                                                     <CommandList>
                                                         <CommandEmpty>{t.bookEmpty}</CommandEmpty>
                                                         <CommandGroup>
+                                                            <CommandItem
+                                                                value="none"
+                                                                onSelect={() => {
+                                                                    setData("book_ids", []);
+                                                                }}
+                                                            >
+                                                                {lang === "kh" ? "គ្មានសៀវភៅ" : "No book"}
+                                                            </CommandItem>
                                                             {books.map((book) => (
                                                                 <CommandItem
                                                                     key={book.id}
-                                                                    value={book.title}
+                                                                    value={`${book.title}-${book.id}`}
                                                                     onSelect={() => {
-                                                                        setData("book_id", book.id.toString());
-                                                                        setOpenBook(false);
-                                                                    } }
+                                                                        const bookId = book.id.toString();
+                                                                        const isSelected = data.book_ids.includes(bookId);
+
+                                                                        setData(
+                                                                            "book_ids",
+                                                                            isSelected
+                                                                                ? data.book_ids.filter((id) => id !== bookId)
+                                                                                : [...data.book_ids, bookId]
+                                                                        );
+                                                                    }}
                                                                 >
+                                                                    <Check
+                                                                        className={`mr-2 h-4 w-4 ${
+                                                                            data.book_ids.includes(book.id.toString()) ? "opacity-100" : "opacity-0"
+                                                                        }`}
+                                                                    />
                                                                     {book.title}
                                                                 </CommandItem>
                                                             ))}
@@ -235,9 +271,9 @@ export default function BookLoansEdit({ loan, books, users, lang = "kh" }: BookL
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            {errors.book_id && (
+                            {bookError && (
                                 <p id="book-error" className="text-red-500 dark:text-red-400 text-sm mt-1">
-                                    {errors.book_id}
+                                    {bookError}
                                 </p>
                             )}
                             {/* FIX: Removed misplaced closing fragment tag </> */}

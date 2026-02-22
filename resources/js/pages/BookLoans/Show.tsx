@@ -39,8 +39,10 @@ interface BookLoan {
     id: number;
     return_date: string;
     returned_at: string | null;
-    book_id: number;
+    book_id: number | null;
+    book_ids?: number[];
     user_id: number;
+    books?: Book[];
     book: Book | null;
     user: User | null;
     status: "processing" | "returned" | "canceled" | null;
@@ -61,6 +63,12 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
     const { processing } = useForm();
     const [showAlert, setShowAlert] = useState(!!flash.message);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const loanBooks = loan.books && loan.books.length > 0
+        ? loan.books
+        : loan.book
+            ? [loan.book]
+            : [];
+    const loanBooksTitle = loanBooks.map((book) => book.title).join(", ");
 
     useEffect(() => {
         if (flash.message) setShowAlert(true);
@@ -93,7 +101,7 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`${t.title}: ${loan.book?.title || t.na}`} />
+            <Head title={`${t.title}: ${loanBooks[0]?.title || t.na}`} />
             <div className="min-h-screen p-6 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
                 <div className="max-w-1xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
                     <h1 className="text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-8">
@@ -152,24 +160,28 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
                             </label>
                             <p
                                 className="px-4 py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-600 transition-all duration-300"
-                                aria-label={loan.book ? `${t.book}: ${loan.book.title}` : `${t.book}: ${t.na}`}
+                                aria-label={loanBooks.length > 0 ? `${t.book}: ${loanBooksTitle}` : `${t.book}: ${t.na}`}
                             >
-                                {loan.book_id ? (
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Link
-                                                    href={route("books.show", loan.book_id)}
-                                                    className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 underline transition-colors duration-200"
-                                                >
-                                                    {loan.book?.title || t.na}
-                                                </Link>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="bg-indigo-600 text-white rounded-lg p-2">
-                                                {t.bookTooltip}
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
+                                {loanBooks.length > 0 ? (
+                                    <div className="flex flex-wrap gap-x-2 gap-y-1">
+                                        {loanBooks.map((book) => (
+                                            <TooltipProvider key={book.id}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Link
+                                                            href={route("books.show", book.id)}
+                                                            className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 underline transition-colors duration-200"
+                                                        >
+                                                            {book.title}
+                                                        </Link>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="bg-indigo-600 text-white rounded-lg p-2">
+                                                        {t.bookTooltip}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        ))}
+                                    </div>
                                 ) : (
                                     <span className="text-gray-500 dark:text-gray-400">{t.na}</span>
                                 )}
@@ -314,7 +326,7 @@ export default function BookLoanShow({ loan, flash, lang = "kh" }: BookLoanShowP
                             </AlertDialogTitle>
                             <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
                                 {t.confirmDeleteDescription}
-                                <strong>{loan.book?.title || t.na}</strong>.
+                                <strong>{loanBooksTitle || t.na}</strong>.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

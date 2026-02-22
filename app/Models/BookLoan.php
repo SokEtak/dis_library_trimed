@@ -24,6 +24,11 @@ class BookLoan extends Model
         return $this->belongsTo(Book::class);
     }
 
+    public function books()
+    {
+        return $this->belongsToMany(Book::class, 'book_loan_books')->withTimestamps();
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

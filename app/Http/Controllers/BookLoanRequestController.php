@@ -151,12 +151,14 @@ class BookLoanRequestController extends Controller
                     'is_deleted' => false,
                 ]);
 
+                $createdBookLoan->books()->sync([(int) $lockedRequest->book_id]);
+
                 $book->update(['is_available' => false]);
             }
         });
 
         $loanRequest->refresh()->load(['book:id,title', 'requester:id,name', 'approver:id,name']);
-        $createdBookLoan?->load(['book:id,title', 'user:id,name']);
+        $createdBookLoan?->load(['books:id,title', 'book:id,title', 'user:id,name']);
 
         broadcast(new BookLoanRequestUpdated($loanRequest));
         broadcast(new DashboardSummaryUpdated('book-loan-request.decide'));
@@ -231,19 +233,33 @@ class BookLoanRequestController extends Controller
 
     private function bookLoanPayload(BookLoan $bookLoan): array
     {
+        $books = $bookLoan->books;
+
+        if ($books->isEmpty() && $bookLoan->book) {
+            $books = collect([$bookLoan->book]);
+        }
+
         return [
             'id' => $bookLoan->id,
             'return_date' => $bookLoan->return_date,
             'returned_at' => $bookLoan->returned_at,
             'book_id' => $bookLoan->book_id,
+            'book_ids' => $books->pluck('id')->values()->all(),
             'user_id' => $bookLoan->user_id,
             'created_at' => optional($bookLoan->created_at)->toIso8601String(),
             'updated_at' => optional($bookLoan->updated_at)->toIso8601String(),
             'status' => $bookLoan->status,
-            'book' => $bookLoan->book ? [
-                'id' => $bookLoan->book->id,
-                'title' => $bookLoan->book->title,
+            'book' => $books->isNotEmpty() ? [
+                'id' => $books->first()->id,
+                'title' => $books->first()->title,
             ] : null,
+            'books' => $books
+                ->map(fn ($book) => [
+                    'id' => $book->id,
+                    'title' => $book->title,
+                ])
+                ->values()
+                ->all(),
             'user' => $bookLoan->user ? [
                 'id' => $bookLoan->user->id,
                 'name' => $bookLoan->user->name,

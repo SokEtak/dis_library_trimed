@@ -184,4 +184,9 @@ class Book extends Model
     {
         return $this->belongsTo(Campus::class, 'campus_id');
     }
+
+    public function bookLoans()
+    {
+        return $this->belongsToMany(BookLoan::class, 'book_loan_books')->withTimestamps();
+    }
 }

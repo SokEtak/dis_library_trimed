@@ -72,11 +72,13 @@ interface BookLoan {
     id: number;
     return_date: string | null;
     returned_at: string | null;
-    book_id: number;
+    book_id: number | null;
+    book_ids?: number[];
     user_id: number;
     created_at: string;
     updated_at: string;
     status: 'processing' | 'returned' | 'canceled';
+    books?: Book[];
     book: Book | null;
     user: User | null;
 }
@@ -99,6 +101,34 @@ const commonStyles = {
     outlineButton: "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-800",
     gradientBg: "bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-indigo-900",
     tooltipBg: "bg-gradient-to-br from-blue-900 to-indigo-600 text-white rounded-xl",
+};
+
+const getLoanBooks = (loan: BookLoan): Book[] => {
+    if (loan.books && loan.books.length > 0) {
+        return loan.books;
+    }
+
+    if (loan.book) {
+        return [loan.book];
+    }
+
+    return [];
+};
+
+const getLoanBookTitles = (loan: BookLoan): string[] => getLoanBooks(loan).map((book) => book.title);
+
+const getLoanBookSummary = (loan: BookLoan, fallback: string): string => {
+    const books = getLoanBooks(loan);
+
+    if (books.length === 0) {
+        return fallback;
+    }
+
+    if (books.length === 1) {
+        return books[0].title;
+    }
+
+    return `${books[0].title} +${books.length - 1}`;
 };
 
 const getColumns = (
@@ -269,7 +299,7 @@ const getColumns = (
             String(row.getValue(id) || t.none).toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-        accessorKey: "book",
+        accessorKey: "books",
         header: ({ column }) => (
             <Button
                 variant="ghost"
@@ -284,7 +314,8 @@ const getColumns = (
             </Button>
         ),
         cell: ({ row }) => {
-            const book = row.original.book;
+            const loanBooks = getLoanBooks(row.original);
+            const firstBook = loanBooks[0] ?? null;
             return (
                 <button
                     className={`${commonStyles.text} px-0 cursor-pointer`}
@@ -294,26 +325,26 @@ const getColumns = (
                     }}
                     role="button"
                     aria-label={
-                        book
-                            ? `View details for book loan with book ${book.title}`
+                        firstBook
+                            ? `View details for book loan with book ${getLoanBookSummary(row.original, t.none)}`
                             : `View details for book loan with no book`
                     }
                 >
-                    {book ? (
+                    {firstBook ? (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Link
-                                        href={route("books.show", book.id)}
+                                        href={route("books.show", firstBook.id)}
                                         className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 underline text-sm"
                                         onClick={(e) => e.stopPropagation()}
-                                        aria-label={`Maps to book ${book.title} at route /books/${book.id}`}
+                                        aria-label={`Maps to book ${firstBook.title} at route /books/${firstBook.id}`}
                                     >
-                                        {book.title}
+                                        {getLoanBookSummary(row.original, t.none)}
                                     </Link>
                                 </TooltipTrigger>
                                 <TooltipContent className={commonStyles.tooltipBg}>
-                                    {t.bookLinkTooltip(book.id)}
+                                    {t.bookLinkTooltip(firstBook.id)}
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -324,9 +355,9 @@ const getColumns = (
             );
         },
         filterFn: (row, _id, value) =>
-            (row.original.book?.title || t.none).toLowerCase().includes(String(value).toLowerCase()),
+            getLoanBookTitles(row.original).join(" ").toLowerCase().includes(String(value).toLowerCase()),
         sortingFn: (rowA, rowB) =>
-            (rowA.original.book?.title || t.none).localeCompare(rowB.original.book?.title || t.none),
+            getLoanBookSummary(rowA.original, t.none).localeCompare(getLoanBookSummary(rowB.original, t.none)),
     },
     {
         accessorKey: "user",
@@ -599,7 +630,7 @@ export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLo
         return (
             String(bookLoan.id).includes(search) ||
             (bookLoan.return_date || t.none).toLowerCase().includes(search) ||
-            (bookLoan.book?.title || t.none).toLowerCase().includes(search) ||
+            (getLoanBookTitles(bookLoan).join(" ") || t.none).toLowerCase().includes(search) ||
             (bookLoan.user?.name || t.none).toLowerCase().includes(search) ||
             new Date(bookLoan.created_at).toLocaleString().toLowerCase().includes(search) ||
             new Date(bookLoan.updated_at).toLocaleString().toLowerCase().includes(search) ||
@@ -613,14 +644,19 @@ export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLo
         <>
             <p>
                 <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.book}:</strong>{" "}
-                {item.book ? (
-                    <Link
-                        href={route("books.show", item.book.id)}
-                        className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 underline text-sm"
-                        aria-label={`Maps to book ${item.book.title} at route /books/${item.book.id}`}
-                    >
-                        {item.book.title}
-                    </Link>
+                {getLoanBooks(item).length > 0 ? (
+                    getLoanBooks(item).map((book, index) => (
+                        <span key={book.id}>
+                            <Link
+                                href={route("books.show", book.id)}
+                                className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 underline text-sm"
+                                aria-label={`Maps to book ${book.title} at route /books/${book.id}`}
+                            >
+                                {book.title}
+                            </Link>
+                            {index < getLoanBooks(item).length - 1 ? ", " : ""}
+                        </span>
+                    ))
                 ) : (
                     t.none
                 )}
@@ -644,7 +680,7 @@ export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLo
                 {item.return_date || t.none}
             </p>
             <p>
-                <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.returnedAt || "Returned At"}:</strong>{" "}
+                <strong className="font-semibold text-indigo-500 dark:text-indigo-300">{t.returnedAt || "ថ្ងៃសងសៀវភៅ"}:</strong>{" "}
                 {item.returned_at || t.none}
             </p>
             <p>
@@ -670,7 +706,7 @@ export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLo
                 <strong className="text-indigo-200">{t.id}:</strong> {item.id}
             </p>
             <p>
-                <strong className="text-indigo-200">{t.book}:</strong> {item.book?.title || t.none}
+                <strong className="text-indigo-200">{t.book}:</strong> {getLoanBookTitles(item).join(", ") || t.none}
             </p>
             <p>
                 <strong className="text-indigo-200">{t.loaner}:</strong> {item.user?.name || t.none}
@@ -741,7 +777,7 @@ export default function BookLoans({ bookloans = [], flash, lang = "kh" }: BookLo
                         <AlertDialogTitle>{t.deleteDialogTitle}</AlertDialogTitle>
                         <AlertDialogDescription>
                             {t.deleteDialogDescription(
-                                bookLoanToDelete?.book?.title || "",
+                                bookLoanToDelete ? getLoanBookTitles(bookLoanToDelete).join(", ") : "",
                                 bookLoanToDelete?.user?.name || ""
                             )}
                         </AlertDialogDescription>

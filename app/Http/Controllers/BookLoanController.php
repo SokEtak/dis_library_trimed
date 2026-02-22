@@ -9,7 +9,10 @@ use App\Models\BookLoan;
 use App\Models\BookLoanRequest as BookLoanRequestModel;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class BookLoanController extends Controller
@@ -19,7 +22,7 @@ class BookLoanController extends Controller
      */
     public function index()
     {
-        $query = BookLoan::with(['book', 'user'])->active($this->userCampusId());
+        $query = BookLoan::with(['books:id,title', 'book:id,title', 'user:id,name'])->active($this->userCampusId());
 
         $status = request('status');
         $overdue = request('overdue');
@@ -33,7 +36,10 @@ class BookLoanController extends Controller
             $query->where('return_date', '<', $today)->where('status', 'processing');
         }
 
-        $bookloans = $query->get();
+        $bookloans = $query
+            ->get()
+            ->map(fn (BookLoan $bookLoan) => $this->normalizeLoanBooks($bookLoan));
+
         $loanRequests = BookLoanRequestModel::query()
             ->with(['book:id,title', 'requester:id,name'])
             ->pending()
@@ -66,7 +72,7 @@ class BookLoanController extends Controller
     public function create()
     {
         return Inertia::render('BookLoans/Create', [
-            'books' => Book::active('physical')->get(),
+            'books' => $this->getAvailableBooksForSelection(),
             'users' => $this->getLoanableUsers(),
             'statuses' => ['processing', 'returned', 'canceled'],
         ]);
@@ -78,10 +84,39 @@ class BookLoanController extends Controller
     public function store(BookLoanRequest $request): RedirectResponse
     {
         $validated = $request->validatedWithExtras();
+        $bookIds = $this->uniqueBookIdsFromPayload($validated);
 
-        BookLoan::create($validated);
+        if ($bookIds === []) {
+            throw ValidationException::withMessages([
+                'book_ids' => 'Please select at least one book.',
+            ]);
+        }
 
-        Book::where('id', $validated['book_id'])->update(['is_available' => false]);
+        $attributes = $validated;
+        unset($attributes['book_ids']);
+
+        if (($attributes['status'] ?? null) === 'returned' && empty($attributes['returned_at'])) {
+            $attributes['returned_at'] = now();
+        }
+
+        if (($attributes['status'] ?? null) !== 'returned') {
+            $attributes['returned_at'] = null;
+        }
+
+        DB::transaction(function () use ($attributes, $bookIds): void {
+            $this->lockBooks($bookIds);
+            $this->assertValidPhysicalBooks($bookIds);
+
+            if (($attributes['status'] ?? null) === 'processing') {
+                $this->assertBooksAreNotActivelyLoaned($bookIds);
+            }
+
+            $bookLoan = BookLoan::create($attributes);
+            $bookLoan->books()->sync($bookIds);
+
+            $this->refreshBookAvailability($bookIds);
+        });
+
         broadcast(new DashboardSummaryUpdated('book-loan.store'));
 
         return redirect()
@@ -98,8 +133,10 @@ class BookLoanController extends Controller
             return abort(404);
         }
 
+        $loan = $this->normalizeLoanBooks($bookloan->load(['books:id,title', 'book:id,title', 'user:id,name']));
+
         return Inertia::render('BookLoans/Show', [
-            'loan' => $bookloan->load(['book', 'user']),
+            'loan' => $loan,
         ]);
     }
 
@@ -112,9 +149,12 @@ class BookLoanController extends Controller
             return abort(404);
         }
 
+        $bookloan->load(['books:id,title', 'book:id,title', 'user:id,name']);
+        $selectedBookIds = $this->loanBookIds($bookloan);
+
         return Inertia::render('BookLoans/Edit', [
-            'loan' => $bookloan,
-            'books' => Book::active(null)->get(),
+            'loan' => $this->normalizeLoanBooks($bookloan),
+            'books' => $this->getAvailableBooksForSelection($selectedBookIds),
             'users' => $this->getLoanableUsers(),
             'statuses' => ['processing', 'returned', 'canceled'],
         ]);
@@ -126,17 +166,43 @@ class BookLoanController extends Controller
     public function update(BookLoanRequest $request, BookLoan $bookloan): RedirectResponse
     {
         $validated = $request->validatedWithExtras();
+        $newBookIds = $this->uniqueBookIdsFromPayload($validated);
 
-        // If status is being set to 'returned', set returned_at to now
-        if (isset($validated['status']) && $validated['status'] === 'returned') {
-            $validated['returned_at'] = now();
+        if ($newBookIds === []) {
+            throw ValidationException::withMessages([
+                'book_ids' => 'Please select at least one book.',
+            ]);
         }
 
-        $bookloan->update($validated);
+        $attributes = $validated;
+        unset($attributes['book_ids']);
 
-        if (in_array($bookloan->status, ['canceled', 'returned'])) {
-            Book::where('id', $bookloan->book_id)->update(['is_available' => true]);
+        if (($attributes['status'] ?? null) === 'returned' && empty($attributes['returned_at'])) {
+            $attributes['returned_at'] = now();
         }
+
+        if (($attributes['status'] ?? null) !== 'returned') {
+            $attributes['returned_at'] = null;
+        }
+
+        $bookloan->load(['books:id,title', 'book:id,title']);
+        $previousBookIds = $this->loanBookIds($bookloan);
+        $affectedBookIds = array_values(array_unique(array_merge($previousBookIds, $newBookIds)));
+
+        DB::transaction(function () use ($bookloan, $attributes, $newBookIds, $affectedBookIds): void {
+            $this->lockBooks($affectedBookIds);
+            $this->assertValidPhysicalBooks($newBookIds);
+
+            if (($attributes['status'] ?? $bookloan->status) === 'processing') {
+                $this->assertBooksAreNotActivelyLoaned($newBookIds, $bookloan->id);
+            }
+
+            $bookloan->update($attributes);
+            $bookloan->books()->sync($newBookIds);
+
+            $this->refreshBookAvailability($affectedBookIds);
+        });
+
         broadcast(new DashboardSummaryUpdated('book-loan.update'));
 
         return redirect()
@@ -149,10 +215,15 @@ class BookLoanController extends Controller
      */
     public function destroy(BookLoan $bookloan): RedirectResponse
     {
-        return $this->handleBookLoanOperation(function () use ($bookloan) {
+        $bookloan->load(['books:id,title', 'book:id,title']);
+        $bookIds = $this->loanBookIds($bookloan);
+
+        return $this->handleBookLoanOperation(function () use ($bookloan, $bookIds) {
             $bookloan->is_deleted
                 ? $bookloan->delete()
                 : $bookloan->update(['is_deleted' => true]);
+
+            $this->refreshBookAvailability($bookIds);
             broadcast(new DashboardSummaryUpdated('book-loan.destroy'));
 
             return redirect()
@@ -192,7 +263,7 @@ class BookLoanController extends Controller
     /**
      * Import bookloans from a CSV file.
      */
-    public function import(\Illuminate\Http\Request $request): RedirectResponse
+    public function import(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
@@ -254,7 +325,7 @@ class BookLoanController extends Controller
      */
     protected function isDeleted(BookLoan $bookloan): bool
     {
-        return $bookloan->is_deleted === 1;
+        return (bool) $bookloan->is_deleted;
     }
 
     /**
@@ -263,5 +334,223 @@ class BookLoanController extends Controller
     protected function getLoanableUsers()
     {
         return User::loaners($this->userCampusId())->get()->toArray();
+    }
+
+    private function uniqueBookIdsFromPayload(array $validated): array
+    {
+        return collect($validated['book_ids'] ?? [])
+            ->when(
+                isset($validated['book_id']) && $validated['book_id'] !== null,
+                fn ($collection) => $collection->push($validated['book_id'])
+            )
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function loanBookIds(BookLoan $bookloan): array
+    {
+        $bookIds = $bookloan->relationLoaded('books')
+            ? $bookloan->books->pluck('id')->all()
+            : $bookloan->books()->pluck('books.id')->all();
+
+        $bookIds = collect($bookIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($bookIds === [] && $bookloan->book_id) {
+            return [(int) $bookloan->book_id];
+        }
+
+        return $bookIds;
+    }
+
+    private function normalizeLoanBooks(BookLoan $bookLoan): BookLoan
+    {
+        $books = $bookLoan->relationLoaded('books')
+            ? $bookLoan->books
+            : $bookLoan->books()->select(['books.id', 'title'])->get();
+
+        $fallbackBook = $bookLoan->relationLoaded('book')
+            ? $bookLoan->book
+            : null;
+
+        if (! $fallbackBook && $bookLoan->book_id) {
+            $fallbackBook = Book::query()->select(['id', 'title'])->find($bookLoan->book_id);
+        }
+
+        if ($books->isEmpty() && $fallbackBook) {
+            $books = collect([$fallbackBook]);
+        }
+
+        $bookLoan->setRelation('books', $books->values());
+
+        if (! $bookLoan->relationLoaded('book') || $bookLoan->book === null) {
+            $bookLoan->setRelation('book', $fallbackBook ?: $books->first());
+        }
+
+        return $bookLoan;
+    }
+
+    private function getAvailableBooksForSelection(array $alwaysIncludeBookIds = [])
+    {
+        $user = Auth::user();
+        $alwaysIncludeBookIds = collect($alwaysIncludeBookIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        return Book::query()
+            ->select(['id', 'title'])
+            ->where('type', 'physical')
+            ->where('is_deleted', false)
+            ->when(
+                $user && $user->hasAnyRole(['staff', 'regular-user']) && $user->campus_id,
+                fn ($query) => $query->where('campus_id', $user->campus_id)
+            )
+            ->where(function ($query) use ($alwaysIncludeBookIds) {
+                $query->where('is_available', true);
+
+                if ($alwaysIncludeBookIds !== []) {
+                    $query->orWhereIn('id', $alwaysIncludeBookIds);
+                }
+            })
+            ->orderBy('title')
+            ->get();
+    }
+
+    private function lockBooks(array $bookIds): void
+    {
+        if ($bookIds === []) {
+            return;
+        }
+
+        Book::query()
+            ->whereIn('id', $bookIds)
+            ->lockForUpdate()
+            ->get(['id']);
+    }
+
+    private function assertValidPhysicalBooks(array $bookIds): void
+    {
+        if ($bookIds === []) {
+            throw ValidationException::withMessages([
+                'book_ids' => 'Please select at least one book.',
+            ]);
+        }
+
+        $user = Auth::user();
+        $validBooksQuery = Book::query()
+            ->whereIn('id', $bookIds)
+            ->where('type', 'physical')
+            ->where('is_deleted', false);
+
+        if ($user && $user->hasAnyRole(['staff', 'regular-user']) && $user->campus_id) {
+            $validBooksQuery->where('campus_id', $user->campus_id);
+        }
+
+        $validCount = $validBooksQuery->count();
+
+        if ($validCount !== count($bookIds)) {
+            throw ValidationException::withMessages([
+                'book_ids' => 'One or more selected books are not eligible for lending.',
+            ]);
+        }
+    }
+
+    private function assertBooksAreNotActivelyLoaned(array $bookIds, ?int $ignoreBookLoanId = null): void
+    {
+        if ($bookIds === []) {
+            return;
+        }
+
+        $activePivotBookIds = DB::table('book_loan_books as blb')
+            ->join('book_loans as bl', 'bl.id', '=', 'blb.book_loan_id')
+            ->whereIn('blb.book_id', $bookIds)
+            ->where('bl.is_deleted', 0)
+            ->where('bl.status', 'processing')
+            ->when($ignoreBookLoanId, fn ($query, $loanId) => $query->where('bl.id', '!=', $loanId))
+            ->pluck('blb.book_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $activeLegacyBookIds = BookLoan::query()
+            ->whereIn('book_id', $bookIds)
+            ->where('is_deleted', false)
+            ->where('status', 'processing')
+            ->when($ignoreBookLoanId, fn ($query, $loanId) => $query->where('id', '!=', $loanId))
+            ->pluck('book_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $conflictingBookIds = collect(array_merge($activePivotBookIds, $activeLegacyBookIds))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($conflictingBookIds === []) {
+            return;
+        }
+
+        $conflictingTitles = Book::query()
+            ->whereIn('id', $conflictingBookIds)
+            ->orderBy('title')
+            ->pluck('title')
+            ->all();
+
+        throw ValidationException::withMessages([
+            'book_ids' => 'The following books are already on active loans: '.implode(', ', $conflictingTitles).'.',
+        ]);
+    }
+
+    private function refreshBookAvailability(array $bookIds): void
+    {
+        $bookIds = collect($bookIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($bookIds === []) {
+            return;
+        }
+
+        $processingPivotBookIds = DB::table('book_loan_books as blb')
+            ->join('book_loans as bl', 'bl.id', '=', 'blb.book_loan_id')
+            ->whereIn('blb.book_id', $bookIds)
+            ->where('bl.is_deleted', 0)
+            ->where('bl.status', 'processing')
+            ->pluck('blb.book_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $processingLegacyBookIds = BookLoan::query()
+            ->whereIn('book_id', $bookIds)
+            ->where('is_deleted', false)
+            ->where('status', 'processing')
+            ->pluck('book_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $borrowedBookIds = collect(array_merge($processingPivotBookIds, $processingLegacyBookIds))
+            ->unique()
+            ->values()
+            ->all();
+
+        Book::query()->whereIn('id', $bookIds)->update(['is_available' => true]);
+
+        if ($borrowedBookIds !== []) {
+            Book::query()->whereIn('id', $borrowedBookIds)->update(['is_available' => false]);
+        }
     }
 }

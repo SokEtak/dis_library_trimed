@@ -13,6 +13,7 @@ class BookLoanExport
     private const HEADERS = [
         'id',
         'book_id',
+        'book_ids',
         'user_id',
         'campus_id',
         'return_date',
@@ -29,13 +30,32 @@ class BookLoanExport
         $writer->insertOne(self::HEADERS);
 
         BookLoan::query()
-            ->select(self::HEADERS)
+            ->with(['books:id,title'])
+            ->select([
+                'id',
+                'book_id',
+                'user_id',
+                'campus_id',
+                'return_date',
+                'returned_at',
+                'status',
+                'is_deleted',
+                'created_at',
+                'updated_at',
+            ])
             ->orderBy('id')
             ->chunk(500, function ($bookloans) use ($writer): void {
                 foreach ($bookloans as $bookloan) {
+                    $bookIds = $bookloan->books->pluck('id')->filter()->values()->all();
+
+                    if ($bookIds === [] && $bookloan->book_id) {
+                        $bookIds = [(int) $bookloan->book_id];
+                    }
+
                     $writer->insertOne([
                         $bookloan->id,
                         $bookloan->book_id,
+                        implode('|', $bookIds),
                         $bookloan->user_id,
                         $bookloan->campus_id,
                         $bookloan->return_date,

@@ -12,7 +12,7 @@ const translations: Translations = {
         bookNone: "គ្មានសៀវភៅ",
         loaner: "អ្នកខ្ចី",
         loanerTooltip: "ស្វែងរក និងជ្រើសរើសអ្នកខ្ចីសៀវភៅ",
-        loanerPlaceholder: "ជ្រើសរើសអ្នកប្រើប្រាស់",
+        loanerPlaceholder: "ជ្រើសរើសម្ចាស់កម្ចី",
         loanerEmpty: "រកមិនឃើញអ្នកប្រើប្រាស់ទេ",
         loanerNone: "គ្មានអ្នកខ្ចី",
         status: "ស្ថានភាព",

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
-import { Head, useForm, Link, router } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,7 +36,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CheckCircle2Icon, X, ChevronDown, ClockIcon, CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { CheckCircle2Icon, X, ChevronDown, ClockIcon, CheckCircleIcon, XCircleIcon, Check } from "lucide-react";
 import translations from "@/utils/translations/bookloan/bookloansCreateTranslations";
 
 interface User {
@@ -66,7 +66,7 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
     const initialFormData = {
         return_date: "",
         returned_at: "",
-        book_id: "none",
+        book_ids: [] as string[],
         user_id: "none",
         status: "none",
     };
@@ -77,12 +77,28 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
     const [openStatus, setOpenStatus] = useState(false);
     const [showLeaveDialog, setShowLeaveDialog] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const bookError = Object.entries(errors)
+        .filter(([key]) => key === "book_ids" || key.startsWith("book_ids."))
+        .map(([, message]) => message)
+        .filter(Boolean)
+        .join(", ");
+    const selectedBooks = books.filter((book) => data.book_ids.includes(book.id.toString()));
+    const selectedBooksLabel =
+        selectedBooks.length === 0
+            ? t.bookPlaceholder
+            : selectedBooks.length === 1
+                ? selectedBooks[0].title
+                : `${selectedBooks[0].title} +${selectedBooks.length - 1}`;
 
     // Track form changes
     useEffect(() => {
-        const hasChanges = Object.keys(data).some(
-            (key) => data[key as keyof typeof data] !== initialFormData[key as keyof typeof initialFormData]
-        );
+        const hasChanges =
+            data.return_date !== "" ||
+            data.returned_at !== "" ||
+            data.user_id !== "none" ||
+            data.status !== "none" ||
+            data.book_ids.length > 0;
+
         setIsDirty(hasChanges);
     }, [data]);
 
@@ -212,7 +228,7 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
                         </div>
                         <div className="space-y-2">
                             <label
-                                htmlFor="book_id"
+                                htmlFor="book_ids"
                                 className="text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
                                 {t.book}
@@ -227,15 +243,13 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
                                                     role="combobox"
                                                     aria-expanded={openBook}
                                                     className={`w-full justify-between px-4 py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border ${
-    errors.book_id
+    bookError
         ? "border-red-500 dark:border-red-400"
         : "border-gray-300 dark:border-gray-600"
 } focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all duration-300 ease-in-out`}
                                                     disabled={processing}
                                                 >
-                                                    {data.book_id !== "none"
-                                                        ? books.find((book) => book.id.toString() === data.book_id)?.title
-                                                        : t.bookPlaceholder}
+                                                    {selectedBooksLabel}
                                                     <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
@@ -253,8 +267,7 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
                                                             <CommandItem
                                                                 value="none"
                                                                 onSelect={() => {
-                                                                    setData("book_id", "none");
-                                                                    setOpenBook(false);
+                                                                    setData("book_ids", []);
                                                                 }}
                                                             >
                                                                 {t.bookNone}
@@ -262,12 +275,24 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
                                                             {books.map((book) => (
                                                                 <CommandItem
                                                                     key={book.id}
-                                                                    value={book.title}
+                                                                    value={`${book.title}-${book.id}`}
                                                                     onSelect={() => {
-                                                                        setData("book_id", book.id.toString());
-                                                                        setOpenBook(false);
+                                                                        const bookId = book.id.toString();
+                                                                        const isSelected = data.book_ids.includes(bookId);
+
+                                                                        setData(
+                                                                            "book_ids",
+                                                                            isSelected
+                                                                                ? data.book_ids.filter((id) => id !== bookId)
+                                                                                : [...data.book_ids, bookId]
+                                                                        );
                                                                     }}
                                                                 >
+                                                                    <Check
+                                                                        className={`mr-2 h-4 w-4 ${
+                                                                            data.book_ids.includes(book.id.toString()) ? "opacity-100" : "opacity-0"
+                                                                        }`}
+                                                                    />
                                                                     {book.title}
                                                                 </CommandItem>
                                                             ))}
@@ -282,9 +307,9 @@ export default function BookLoansCreate({ books, users, lang = "kh" }: BookLoans
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            {errors.book_id && (
+                            {bookError && (
                                 <p id="book-error" className="text-red-500 dark:text-red-400 text-sm mt-1">
-                                    {errors.book_id}
+                                    {bookError}
                                 </p>
                             )}
                         </div>

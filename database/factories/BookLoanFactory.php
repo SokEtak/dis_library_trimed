@@ -13,6 +13,15 @@ class BookLoanFactory extends Factory
 {
     protected $model = BookLoan::class;
 
+    public function configure(): static
+    {
+        return $this->afterCreating(function (BookLoan $bookLoan): void {
+            if ($bookLoan->book_id) {
+                $bookLoan->books()->syncWithoutDetaching([(int) $bookLoan->book_id]);
+            }
+        });
+    }
+
     public function definition(): array
     {
         // Pick random related IDs from existing records

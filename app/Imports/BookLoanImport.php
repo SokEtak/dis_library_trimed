@@ -13,7 +13,9 @@ class BookLoanImport
      * Columns accepted from CSV input.
      */
     private const ACCEPTED_COLUMNS = [
+        'id',
         'book_id',
+        'book_ids',
         'user_id',
         'campus_id',
         'return_date',
@@ -50,18 +52,38 @@ class BookLoanImport
             foreach ($reader->getRecords() as $index => $row) {
                 try {
                     $payload = $this->normalizeRow($row);
+                    $attributes = $payload;
+                    unset($attributes['book_ids'], $attributes['id']);
 
-                    $bookloan = BookLoan::query()
-                        ->where('book_id', $payload['book_id'])
-                        ->where('user_id', $payload['user_id'])
-                        ->where('campus_id', $payload['campus_id'])
-                        ->first();
+                    $bookloan = null;
+
+                    if (! empty($payload['id'])) {
+                        $bookloan = BookLoan::query()->find($payload['id']);
+                    }
+
+                    if (! $bookloan) {
+                        $bookloan = BookLoan::query()
+                            ->where('book_id', $payload['book_id'])
+                            ->where('user_id', $payload['user_id'])
+                            ->where('campus_id', $payload['campus_id'])
+                            ->first();
+                    }
 
                     if ($bookloan) {
-                        $bookloan->fill($payload)->save();
+                        $bookloan->fill($attributes)->save();
+                        if (! empty($payload['book_ids']) && is_array($payload['book_ids'])) {
+                            $bookloan->books()->sync($payload['book_ids']);
+                        } elseif (! empty($payload['book_id'])) {
+                            $bookloan->books()->sync([(int) $payload['book_id']]);
+                        }
                         $result['updated']++;
                     } else {
-                        BookLoan::create($payload);
+                        $createdLoan = BookLoan::create($attributes);
+                        if (! empty($payload['book_ids']) && is_array($payload['book_ids'])) {
+                            $createdLoan->books()->sync($payload['book_ids']);
+                        } elseif (! empty($payload['book_id'])) {
+                            $createdLoan->books()->sync([(int) $payload['book_id']]);
+                        }
                         $result['created']++;
                     }
                 } catch (\Throwable $e) {
@@ -80,8 +102,17 @@ class BookLoanImport
      */
     private function normalizeRow(array $row): array
     {
+        $bookIds = $this->parseBookIds($row['book_ids'] ?? null);
+        $primaryBookId = $bookIds[0] ?? $this->nullableInt($row, 'book_id');
+
+        if ($primaryBookId === null) {
+            throw new InvalidArgumentException('book_id or book_ids is required.');
+        }
+
         $payload = [
-            'book_id' => $this->requiredInt($row, 'book_id'),
+            'id' => $this->nullableInt($row, 'id'),
+            'book_id' => $primaryBookId,
+            'book_ids' => $bookIds !== [] ? $bookIds : [$primaryBookId],
             'user_id' => $this->requiredInt($row, 'user_id'),
             'campus_id' => $this->requiredInt($row, 'campus_id'),
             'return_date' => $this->requiredString($row, 'return_date'),
@@ -95,6 +126,31 @@ class BookLoanImport
         }
 
         return $payload;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function parseBookIds(mixed $value): array
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        return collect(preg_split('/[|,]/', $value) ?: [])
+            ->map(fn ($id) => trim((string) $id))
+            ->filter(fn ($id) => $id !== '')
+            ->map(function ($id) {
+                if (! is_numeric($id)) {
+                    throw new InvalidArgumentException('book_ids must contain integers separated by commas or pipes.');
+                }
+
+                return (int) $id;
+            })
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
