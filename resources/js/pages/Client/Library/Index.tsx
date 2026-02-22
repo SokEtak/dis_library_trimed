@@ -1240,9 +1240,6 @@ export default function Index() {
                         })
                     ) : (
                         <div className="col-span-full flex flex-col items-center justify-center py-12 sm:py-20 md:py-32">
-                            <div className="animate-fade-in mb-4 sm:mb-6 flex h-24 w-24 sm:h-32 sm:w-32 lg:h-36 lg:w-36 items-center justify-center rounded-full bg-gradient-to-br from-cyan-200 via-fuchsia-100 to-pink-200 shadow-lg sm:shadow-2xl dark:from-cyan-900 dark:via-fuchsia-900 ">
-                                <img src="/images/empty-state.svg" alt="No books found" className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 opacity-90" />
-                            </div>
                             <p className="mb-4 sm:mb-6 text-center text-lg sm:text-2xl lg:text-3xl font-light tracking-wide text-gray-400 px-4 dark:text-gray-500">
                                 {t.noBooksFound.replace('{type}', bookType === 'ebook' ? t.bookType.ebook : t.bookType.physical)}
                             </p>
