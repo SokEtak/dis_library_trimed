@@ -907,6 +907,8 @@ export default function Users({ users = [], campuses = [], roles = [], permissio
                     show: (id) => route("users.show", id),
                     edit: (id) => route("users.edit", id),
                     destroy: (id) => route("users.destroy", id),
+                    export: route("users.export"),
+                    import: route("users.import"),
                 }}
                 flash={flash}
                 modalFields={modalFields}

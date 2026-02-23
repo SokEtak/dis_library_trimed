@@ -54,10 +54,17 @@ Route::middleware(['auth', 'role:staff|admin'])
         // BookLoans import/export
         Route::get('bookloans/export', [BookLoanController::class, 'export'])->name('bookloans.export');
         Route::post('bookloans/import', [BookLoanController::class, 'import'])->name('bookloans.import');
+
+        // Users import/export
+        Route::get('users/export', [UserController::class, 'export'])->name('users.export');
+        Route::post('users/import', [UserController::class, 'import'])->name('users.import');
+
         Route::patch('loan-requests/{loanRequest}/decision', [BookLoanRequestController::class, 'decide'])
             ->name('bookloans.requests.decide');
         Route::post('loan-requests/batch-create-loan', [BookLoanRequestController::class, 'createBatchLoan'])
             ->name('bookloans.requests.batch-loan');
+        Route::post('loan-requests/batch-reject', [BookLoanRequestController::class, 'rejectBatch'])
+            ->name('bookloans.requests.batch-reject');
 
         Route::resources([
             'books' => BookController::class,

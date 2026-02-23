@@ -378,6 +378,110 @@ class BookLoanRequestController extends Controller
         ]);
     }
 
+    public function rejectBatch(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->hasAnyRole(['admin', 'staff'])) {
+            abort(403, 'Only staff/admin can reject requests.');
+        }
+
+        $validated = $request->validate([
+            'request_ids' => ['required', 'array', 'min:1'],
+            'request_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $requestIds = collect($validated['request_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($requestIds === []) {
+            throw ValidationException::withMessages([
+                'request_ids' => 'Please select at least one pending request.',
+            ]);
+        }
+
+        $rejectedRequests = collect();
+
+        DB::transaction(function () use ($requestIds, $user, &$rejectedRequests): void {
+            $lockedRequests = BookLoanRequest::query()
+                ->whereIn('id', $requestIds)
+                ->lockForUpdate()
+                ->get();
+
+            if ($lockedRequests->count() !== count($requestIds)) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'One or more selected requests no longer exist.',
+                ]);
+            }
+
+            $hasProcessedRequests = $lockedRequests->contains(fn (BookLoanRequest $loanRequest) => $loanRequest->status !== 'pending');
+
+            if ($hasProcessedRequests) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'One or more requests have already been processed.',
+                ]);
+            }
+
+            $requesterIds = $lockedRequests
+                ->pluck('requester_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            if (count($requesterIds) !== 1) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'Batch rejection requires requests from one user only.',
+                ]);
+            }
+
+            $campusIds = $lockedRequests
+                ->pluck('campus_id')
+                ->filter(fn ($campusId) => $campusId !== null)
+                ->map(fn ($campusId) => (int) $campusId)
+                ->unique()
+                ->values()
+                ->all();
+
+            if (count($campusIds) > 1) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'Batch rejection requires requests from the same campus.',
+                ]);
+            }
+
+            $decidedAt = now();
+            BookLoanRequest::query()
+                ->whereIn('id', $requestIds)
+                ->update([
+                    'status' => 'rejected',
+                    'approver_id' => $user->id,
+                    'decided_at' => $decidedAt,
+                ]);
+
+            $rejectedRequests = BookLoanRequest::query()
+                ->with(['book:id,title', 'requester:id,name', 'approver:id,name'])
+                ->whereIn('id', $requestIds)
+                ->get();
+        });
+
+        $rejectedRequests->each(function (BookLoanRequest $rejectedRequest): void {
+            broadcast(new BookLoanRequestUpdated($rejectedRequest));
+        });
+        broadcast(new DashboardSummaryUpdated('book-loan-request.batch-reject'));
+
+        return response()->json([
+            'message' => sprintf('បដិសេធចំនួន%dសំណើរ.', $rejectedRequests->count()),
+            'loanRequests' => $rejectedRequests
+                ->map(fn (BookLoanRequest $rejectedRequest) => $this->loanRequestPayload($rejectedRequest))
+                ->values()
+                ->all(),
+        ]);
+    }
+
     public function cancel(Request $request, BookLoanRequest $loanRequest): JsonResponse
     {
         $user = $request->user();
@@ -473,6 +577,5 @@ class BookLoanRequestController extends Controller
         ];
     }
 }
-
 
 

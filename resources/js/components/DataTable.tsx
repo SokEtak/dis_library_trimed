@@ -129,6 +129,18 @@ function DataTable<T extends DataItem>({
     enableRowModal = true,
     onRowClick,
 }: DataTableProps<T>) {
+    const normalizedResourceName = typeof resourceName === "string" ? resourceName.trim() : "";
+    const displayResourceName =
+        normalizedResourceName &&
+        normalizedResourceName.toLowerCase() !== "null" &&
+        normalizedResourceName.toLowerCase() !== "undefined"
+            ? normalizedResourceName
+            : "items";
+    const singularResourceName =
+        displayResourceName.endsWith("s") && displayResourceName.length > 1
+            ? displayResourceName.slice(0, -1)
+            : displayResourceName;
+
     const { processing } = useForm();
     const [itemToDelete, setItemToDelete] = useState<T | null>(null);
     const [showAlert, setShowAlert] = useState(!!flash?.message && !!flash?.type);
@@ -384,7 +396,7 @@ function DataTable<T extends DataItem>({
                                                     onClick={onCreate}
                                                     className={`${commonStyles.button} ${commonStyles.indigoButton}`}
                                                     disabled={isTableLoading || processing}
-                                                    aria-label={`Add a new ${resourceName.slice(0, -1)}`}
+                                                    aria-label={`Add a new ${singularResourceName}`}
                                                 >
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
@@ -393,7 +405,7 @@ function DataTable<T extends DataItem>({
                                                     asChild
                                                     className={`${commonStyles.button} ${commonStyles.indigoButton}`}
                                                     disabled={isTableLoading || processing}
-                                                    aria-label={`Add a new ${resourceName.slice(0, -1)}`}
+                                                    aria-label={`Add a new ${singularResourceName}`}
                                                 >
                                                     <Link href={routes.create}>
                                                         <Plus className="h-4 w-4" />
@@ -402,7 +414,7 @@ function DataTable<T extends DataItem>({
                                             )}
                                         </TooltipTrigger>
                                         <TooltipContent className="rounded-xl bg-gradient-to-br from-blue-900 to-blue-600 text-white">
-                                            <p>បន្ថែម{resourceName.slice(0, -1)}</p>
+                                            <p>បន្ថែម{singularResourceName}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -414,7 +426,7 @@ function DataTable<T extends DataItem>({
                                 {isTableLoading ? (
                                     <Skeleton className="h-4 w-32" />
                                 ) : (
-                                    `Found ${table.getFilteredRowModel().rows.length} ${resourceName}.`
+                                    `បានរកឃើញចំនួន ${table.getFilteredRowModel().rows.length} ${displayResourceName}`
                                 )}
                             </div>
                         </div>
@@ -578,7 +590,7 @@ function DataTable<T extends DataItem>({
                                             colSpan={columns.length}
                                             className="h-24 text-center text-gray-600 dark:text-gray-300 text-sm"
                                         >
-                                            No {resourceName} found.
+                                            No {displayResourceName} found.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -666,7 +678,7 @@ function DataTable<T extends DataItem>({
 
                             <DialogHeader>
                                 <DialogTitle className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
-                                    {selectedRow?.code || `${resourceName.slice(0, -1)} Details`}
+                                    {selectedRow?.code || `${singularResourceName} Details`}
                                 </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 p-4">
@@ -694,7 +706,7 @@ function DataTable<T extends DataItem>({
                                 </AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-600 dark:text-gray-300 text-sm">
                                     This action cannot be undone. This will permanently delete{" "}
-                                    <strong>{itemToDelete?.code || `this ${resourceName.slice(0, -1)}`}</strong>.
+                                    <strong>{itemToDelete?.code || `this ${singularResourceName}`}</strong>.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

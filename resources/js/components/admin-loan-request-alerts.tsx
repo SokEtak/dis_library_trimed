@@ -50,7 +50,10 @@ export default function AdminLoanRequestAlerts() {
 
     const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(adminLoanRequests || []);
     const [decisionProcessingRequestId, setDecisionProcessingRequestId] = useState<number | null>(null);
-    const [batchProcessingRequesterId, setBatchProcessingRequesterId] = useState<number | null>(null);
+    const [batchProcessingState, setBatchProcessingState] = useState<{
+        requester_id: number;
+        action: 'loan' | 'reject';
+    } | null>(null);
     const [highlightedRequestIds, setHighlightedRequestIds] = useState<number[]>([]);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({
@@ -237,7 +240,7 @@ export default function AdminLoanRequestAlerts() {
     }, [isAdmin]);
 
     const handleRejectRequest = async (loanRequest: LoanRequest) => {
-        if (decisionProcessingRequestId !== null || batchProcessingRequesterId !== null) {
+        if (decisionProcessingRequestId !== null || batchProcessingState !== null) {
             return;
         }
 
@@ -290,7 +293,7 @@ export default function AdminLoanRequestAlerts() {
     };
 
     const handleCreateBatchLoan = async (group: LoanRequestGroup) => {
-        if (batchProcessingRequesterId !== null || decisionProcessingRequestId !== null) {
+        if (batchProcessingState !== null || decisionProcessingRequestId !== null) {
             return;
         }
 
@@ -298,7 +301,10 @@ export default function AdminLoanRequestAlerts() {
         const requestIdSet = new Set(requestIds);
 
         requestIds.forEach((requestId) => locallyProcessedRequestIdsRef.current.add(requestId));
-        setBatchProcessingRequesterId(group.requester_id);
+        setBatchProcessingState({
+            requester_id: group.requester_id,
+            action: 'loan',
+        });
 
         try {
             const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute('content') ?? '';
@@ -343,7 +349,68 @@ export default function AdminLoanRequestAlerts() {
                 type: 'error',
             });
         } finally {
-            setBatchProcessingRequesterId(null);
+            setBatchProcessingState(null);
+        }
+    };
+
+    const handleBatchRejectRequests = async (group: LoanRequestGroup) => {
+        if (batchProcessingState !== null || decisionProcessingRequestId !== null) {
+            return;
+        }
+
+        const requestIds = group.requests.map((requestItem) => requestItem.id);
+        const requestIdSet = new Set(requestIds);
+
+        requestIds.forEach((requestId) => locallyProcessedRequestIdsRef.current.add(requestId));
+        setBatchProcessingState({
+            requester_id: group.requester_id,
+            action: 'reject',
+        });
+
+        try {
+            const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('bookloans.requests.batch-reject'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+                body: JSON.stringify({ request_ids: requestIds }),
+            });
+
+            const data = (await response.json()) as { message?: string };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Unable to batch reject requests.');
+            }
+
+            setToast({
+                show: true,
+                message: data.message || 'Batch rejection completed.',
+                type: 'info',
+            });
+
+            setPendingLoanRequests((currentRequests) =>
+                currentRequests.filter((requestItem) => !requestIdSet.has(requestItem.id)),
+            );
+
+            router.reload({
+                only: ['adminLoanRequests', 'bookloans', 'loanRequests'],
+            });
+        } catch (error) {
+            requestIds.forEach((requestId) => locallyProcessedRequestIdsRef.current.delete(requestId));
+
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : 'Unable to batch reject requests.',
+                type: 'error',
+            });
+        } finally {
+            setBatchProcessingState(null);
         }
     };
 
@@ -351,7 +418,7 @@ export default function AdminLoanRequestAlerts() {
         return null;
     }
 
-    const isAnyActionProcessing = decisionProcessingRequestId !== null || batchProcessingRequesterId !== null;
+    const isAnyActionProcessing = decisionProcessingRequestId !== null || batchProcessingState !== null;
 
     return (
         <>
@@ -376,7 +443,9 @@ export default function AdminLoanRequestAlerts() {
                                 const groupIsHighlighted = group.requests.some((requestItem) =>
                                     highlightedRequestIds.includes(requestItem.id),
                                 );
-                                const isBatchProcessing = batchProcessingRequesterId === group.requester_id;
+                                const isProcessingThisGroup = batchProcessingState?.requester_id === group.requester_id;
+                                const isBatchLoanProcessing = isProcessingThisGroup && batchProcessingState?.action === 'loan';
+                                const isBatchRejectProcessing = isProcessingThisGroup && batchProcessingState?.action === 'reject';
 
                                 return (
                                     <section
@@ -432,14 +501,25 @@ export default function AdminLoanRequestAlerts() {
                                             })}
                                         </div>
 
-                                        <div className="mt-3 flex justify-end">
+                                        <div className="mt-3 flex justify-end gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="border-rose-200 bg-white text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                                                onClick={() => handleBatchRejectRequests(group)}
+                                                disabled={isAnyActionProcessing}
+                                            >
+                                                {isBatchRejectProcessing
+                                                    ? 'កំពុងបដិសេធទាំងអស់...'
+                                                    : `បដិសេធទាំងអស់ (${group.requests.length})`}
+                                            </Button>
                                             <Button
                                                 type="button"
                                                 className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700"
                                                 onClick={() => handleCreateBatchLoan(group)}
                                                 disabled={isAnyActionProcessing}
                                             >
-                                                {isBatchProcessing
+                                                {isBatchLoanProcessing
                                                     ? 'កំពុងបង្កើតការខ្ចី...'
                                                     : `បង្កើតការខ្ចី (${group.requests.length})`}
                                             </Button>

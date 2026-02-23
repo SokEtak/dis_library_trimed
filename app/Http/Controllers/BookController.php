@@ -37,8 +37,7 @@ class BookController extends Controller
         }
         // Sort desc to see the newest created book
         $books = Book::active($book_type)->orderByDesc('created_at')->get();
-        // dd($books->toArray());
-        // dd($books->toArray());
+       
         return Inertia::render('Books/Index', [
             'books' => $books,
             'availableCategories' => Category::all(),

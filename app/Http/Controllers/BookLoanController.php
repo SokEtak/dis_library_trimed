@@ -59,10 +59,17 @@ class BookLoanController extends Controller
                     'created_at' => optional($loanRequest->created_at)->toIso8601String(),
                 ];
             });
-
+        $books=Book::active('physical')->orderByDesc('created_at')->get();
         return Inertia::render('BookLoans/Index', [
             'bookloans' => $bookloans,
             'loanRequests' => $loanRequests,
+            'books' => $books,
+            'users' => $this->getLoanableUsers(),
+            'statuses' => ['processing', 'returned', 'canceled'],
+            'flash' => [
+                'message' => session('flash.message') ?? session('message'),
+                'error' => session('flash.error'),
+            ],
         ]);
     }
 
@@ -71,17 +78,13 @@ class BookLoanController extends Controller
      */
     public function create()
     {
-        return Inertia::render('BookLoans/Create', [
-            'books' => $this->getAvailableBooksForSelection(),
-            'users' => $this->getLoanableUsers(),
-            'statuses' => ['processing', 'returned', 'canceled'],
-        ]);
+        return redirect()->route('bookloans.index', ['dialog' => 'create']);
     }
 
     /**
      * Store a newly created book loan.
      */
-    public function store(BookLoanRequest $request): RedirectResponse
+    public function store(BookLoanRequest $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $validated = $request->validatedWithExtras();
         $bookIds = $this->uniqueBookIdsFromPayload($validated);
@@ -94,6 +97,7 @@ class BookLoanController extends Controller
 
         $attributes = $validated;
         unset($attributes['book_ids']);
+        $attributes['status'] = 'processing';
 
         if (($attributes['status'] ?? null) === 'returned' && empty($attributes['returned_at'])) {
             $attributes['returned_at'] = now();
@@ -103,7 +107,9 @@ class BookLoanController extends Controller
             $attributes['returned_at'] = null;
         }
 
-        DB::transaction(function () use ($attributes, $bookIds): void {
+        $bookLoan = null;
+
+        DB::transaction(function () use ($attributes, $bookIds, &$bookLoan): void {
             $this->lockBooks($bookIds);
             $this->assertValidPhysicalBooks($bookIds);
 
@@ -119,15 +125,30 @@ class BookLoanController extends Controller
 
         broadcast(new DashboardSummaryUpdated('book-loan.store'));
 
+        $bookLoan = $this->normalizeLoanBooks(
+            $bookLoan->load(['books:id,title', 'book:id,title', 'user:id,name'])
+        );
+        $message = 'Book loan created successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $bookLoan,
+            ], 201);
+        }
+
         return redirect()
             ->route('bookloans.index')
-            ->with('message', 'Book loan created successfully.');
+            ->with('flash', [
+                'message' => $message,
+                'type' => 'success',
+            ]);
     }
 
     /**
      * Display the specified book loan.
      */
-    public function show(BookLoan $bookloan)
+    public function show(Request $request, BookLoan $bookloan)
     {
         if ($this->isDeleted($bookloan)) {
             return abort(404);
@@ -135,8 +156,15 @@ class BookLoanController extends Controller
 
         $loan = $this->normalizeLoanBooks($bookloan->load(['books:id,title', 'book:id,title', 'user:id,name']));
 
-        return Inertia::render('BookLoans/Show', [
-            'loan' => $loan,
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $loan,
+            ]);
+        }
+
+        return redirect()->route('bookloans.index', [
+            'dialog' => 'view',
+            'id' => $loan->id,
         ]);
     }
 
@@ -149,21 +177,16 @@ class BookLoanController extends Controller
             return abort(404);
         }
 
-        $bookloan->load(['books:id,title', 'book:id,title', 'user:id,name']);
-        $selectedBookIds = $this->loanBookIds($bookloan);
-
-        return Inertia::render('BookLoans/Edit', [
-            'loan' => $this->normalizeLoanBooks($bookloan),
-            'books' => $this->getAvailableBooksForSelection($selectedBookIds),
-            'users' => $this->getLoanableUsers(),
-            'statuses' => ['processing', 'returned', 'canceled'],
+        return redirect()->route('bookloans.index', [
+            'dialog' => 'edit',
+            'id' => $bookloan->id,
         ]);
     }
 
     /**
      * Update the specified book loan.
      */
-    public function update(BookLoanRequest $request, BookLoan $bookloan): RedirectResponse
+    public function update(BookLoanRequest $request, BookLoan $bookloan): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $validated = $request->validatedWithExtras();
         $newBookIds = $this->uniqueBookIdsFromPayload($validated);
@@ -205,20 +228,35 @@ class BookLoanController extends Controller
 
         broadcast(new DashboardSummaryUpdated('book-loan.update'));
 
+        $bookloan = $this->normalizeLoanBooks(
+            $bookloan->fresh()->load(['books:id,title', 'book:id,title', 'user:id,name'])
+        );
+        $message = 'Book loan updated successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $bookloan,
+            ]);
+        }
+
         return redirect()
-            ->route('bookloans.show', $bookloan)
-            ->with('message', 'Book loan updated successfully.');
+            ->route('bookloans.index')
+            ->with('flash', [
+                'message' => $message,
+                'type' => 'success',
+            ]);
     }
 
     /**
      * Delete the specified book loan.
      */
-    public function destroy(BookLoan $bookloan): RedirectResponse
+    public function destroy(Request $request, BookLoan $bookloan): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $bookloan->load(['books:id,title', 'book:id,title']);
         $bookIds = $this->loanBookIds($bookloan);
 
-        return $this->handleBookLoanOperation(function () use ($bookloan, $bookIds) {
+        try {
             $bookloan->is_deleted
                 ? $bookloan->delete()
                 : $bookloan->update(['is_deleted' => true]);
@@ -226,22 +264,32 @@ class BookLoanController extends Controller
             $this->refreshBookAvailability($bookIds);
             broadcast(new DashboardSummaryUpdated('book-loan.destroy'));
 
+            $message = 'Book loan deleted successfully.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ]);
+            }
+
             return redirect()
                 ->route('bookloans.index')
-                ->with('message', 'Book loan deleted successfully.');
-        }, 'delete');
-    }
-
-    /**
-     * Handle book loan operations with error catching.
-     */
-    private function handleBookLoanOperation(callable $operation, string $action): RedirectResponse
-    {
-        try {
-            return $operation();
+                ->with('flash', [
+                    'message' => $message,
+                    'type' => 'success',
+                ]);
         } catch (\Exception $e) {
-            return redirect()->back()->with('flash', [
-                'error' => "Failed to $action book loan: ".$e->getMessage(),
+            $message = 'Failed to delete book loan: '.$e->getMessage();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('bookloans.index')->with('flash', [
+                'error' => $message,
+                'type' => 'error',
             ]);
         }
     }

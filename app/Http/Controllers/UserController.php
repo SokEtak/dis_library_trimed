@@ -6,6 +6,8 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\Campus;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -227,5 +229,56 @@ class UserController extends Controller
             'message' => 'User updated successfully.',
             'type' => 'success',
         ]);
+    }
+
+    /**
+     * Export users as CSV.
+     */
+    public function export()
+    {
+        $csv = (new \App\Exports\UserExport())->toCsvString();
+        $filename = 'users_export_'.now()->format('Ymd_His').'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Import users from a CSV file.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'import_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        try {
+            $result = (new \App\Imports\UserImport())->importFromPath(
+                $validated['import_file']->getRealPath()
+            );
+
+            $message = "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Failed: {$result['failed']}.";
+
+            if ($result['failed'] > 0) {
+                $sampleErrors = implode(' | ', array_slice($result['errors'], 0, 3));
+
+                return redirect()->route('users.index')->with('flash', [
+                    'error' => $message.' '.$sampleErrors,
+                    'type' => 'error',
+                ]);
+            }
+
+            return redirect()->route('users.index')->with('flash', [
+                'message' => $message,
+                'type' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')->with('flash', [
+                'error' => 'Import failed: '.$e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
     }
 }
