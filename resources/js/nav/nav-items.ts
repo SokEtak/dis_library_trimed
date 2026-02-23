@@ -168,7 +168,7 @@ export const navGroups: NavGroup[] = [
             },
            
             {
-                title: "Activity Logs",
+                title: "កំណត់ហេតុសកម្មភាព",
                 url: route("logs.index"),
                 icon: ScrollText,
                 iconColor: "text-cyan-500",

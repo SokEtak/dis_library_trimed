@@ -105,7 +105,7 @@ class AppServiceProvider extends ServiceProvider
             $eventName = $activity->event ?: $activity->description ?: 'updated';
             $source = strtolower(class_basename((string) $activity->subject_type)).'.'.$eventName;
 
-            broadcast(new ActivityLogStreamUpdated((int) $activity->id, $source));
+            broadcast(new ActivityLogStreamUpdated($activity, $source));
         });
     }
 }
