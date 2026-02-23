@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Book extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $guarded = [];
 
@@ -65,6 +67,42 @@ class Book extends Model
         'published_at' => 'integer',
         'downloadable' => 'integer',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('book')
+            ->logOnly([
+                'title',
+                'description',
+                'page_count',
+                'publisher',
+                'language',
+                'program',
+                'published_at',
+                'cover',
+                'pdf_url',
+                'flip_link',
+                'view',
+                'is_available',
+                'author',
+                'code',
+                'isbn',
+                'type',
+                'downloadable',
+                'user_id',
+                'category_id',
+                'subcategory_id',
+                'bookcase_id',
+                'shelf_id',
+                'subject_id',
+                'grade_id',
+                'campus_id',
+                'is_deleted',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     // used by bookcase
     public function scopePhysicalAndActiveForCampus($query)

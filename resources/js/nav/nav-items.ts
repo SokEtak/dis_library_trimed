@@ -29,6 +29,7 @@ import {
     UserRoundPlus,
     PackagePlus,
     Ambulance,
+    ScrollText,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -166,6 +167,12 @@ export const navGroups: NavGroup[] = [
                 ],
             },
            
+            {
+                title: "Activity Logs",
+                url: route("logs.index"),
+                icon: ScrollText,
+                iconColor: "text-cyan-500",
+            },
             {
                 title: "អ្នកប្រើប្រាស់",
                 url: route("users.index"),

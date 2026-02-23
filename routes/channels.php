@@ -13,3 +13,7 @@ Broadcast::channel('book-loan-requests.user.{userId}', function ($user, int $use
 Broadcast::channel('dashboard.summary', function ($user) {
     return $user->hasAnyRole(['admin', 'staff']);
 });
+
+Broadcast::channel('activity.logs', function ($user) {
+    return $user->hasAnyRole(['admin', 'staff']);
+});

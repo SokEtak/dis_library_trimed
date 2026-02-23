@@ -4,6 +4,7 @@ use App\Http\Controllers\BookcaseController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookLoanController;
 use App\Http\Controllers\BookLoanRequestController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\CampusController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
@@ -65,6 +66,9 @@ Route::middleware(['auth', 'role:staff|admin'])
             ->name('bookloans.requests.batch-loan');
         Route::post('loan-requests/batch-reject', [BookLoanRequestController::class, 'rejectBatch'])
             ->name('bookloans.requests.batch-reject');
+
+        Route::get('logs', [ActivityLogController::class, 'index'])
+            ->name('logs.index');
 
         Route::resources([
             'books' => BookController::class,

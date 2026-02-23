@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\ActivityLogStreamUpdated;
 use App\Events\DashboardSummaryUpdated;
 use App\Models\Book;
+use App\Models\BookLoan;
 use App\Models\Bookcase;
 use App\Models\Campus;
 use App\Models\Category;
@@ -13,6 +15,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -33,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
         $this->registerDashboardSummaryModelEvents();
+        $this->registerActivityLogStreamEvents();
     }
 
     private function registerDashboardSummaryModelEvents(): void
@@ -89,5 +93,19 @@ class AppServiceProvider extends ServiceProvider
                 });
             }
         }
+    }
+
+    private function registerActivityLogStreamEvents(): void
+    {
+        Activity::created(function (Activity $activity): void {
+            if (! in_array($activity->subject_type, [Book::class, BookLoan::class], true)) {
+                return;
+            }
+
+            $eventName = $activity->event ?: $activity->description ?: 'updated';
+            $source = strtolower(class_basename((string) $activity->subject_type)).'.'.$eventName;
+
+            broadcast(new ActivityLogStreamUpdated((int) $activity->id, $source));
+        });
     }
 }

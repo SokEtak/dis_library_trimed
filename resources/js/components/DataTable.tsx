@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -101,6 +101,8 @@ interface DataTableProps<T extends DataItem> {
     onCreate?: () => void;
     enableRowModal?: boolean;
     onRowClick?: (item: T) => void;
+    showCreateButton?: boolean;
+    topContent?: ReactNode;
 }
 
 // Re-introducing the common styles for the dynamic color theme
@@ -128,6 +130,8 @@ function DataTable<T extends DataItem>({
     onCreate,
     enableRowModal = true,
     onRowClick,
+    showCreateButton = true,
+    topContent,
 }: DataTableProps<T>) {
     const normalizedResourceName = typeof resourceName === "string" ? resourceName.trim() : "";
     const displayResourceName =
@@ -271,6 +275,7 @@ function DataTable<T extends DataItem>({
                     className="hidden" 
                     onChange={handleImportFileChange} 
                 />
+                {topContent}
                 {/* Main Controls Header */}
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-row items-center justify-between w-full">
@@ -387,6 +392,7 @@ function DataTable<T extends DataItem>({
                                 )}
 
                                 {/* Add Button */}
+                                {showCreateButton && (
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -418,6 +424,7 @@ function DataTable<T extends DataItem>({
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
+                                )}
                             </ButtonGroup>
                         </div>
                         {/* Found n item at top right */}
