@@ -88,7 +88,7 @@ class BookLoanRequestController extends Controller
         }
 
         return response()->json([
-            'message' => 'Loan request submitted.',
+            'message' => 'សំណើរបានផ្ញើរដោយជោគជ័យ',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
             'already_pending' => ! $wasCreated,
         ], $wasCreated ? 201 : 200);
@@ -168,6 +168,212 @@ class BookLoanRequestController extends Controller
                 ? 'សំណើរ​សុំ​ការខ្ចី​សៀវភៅ​ត្រូវ​បាន​អនុម័ត'
                 : 'សំណើរ​ស្នើរសុំខ្ចី​សៀវភៅ​ត្រូវ​បាន​បដិសេធ',
             'loanRequest' => $this->loanRequestPayload($loanRequest),
+            'bookLoan' => $createdBookLoan ? $this->bookLoanPayload($createdBookLoan) : null,
+        ]);
+    }
+
+    public function createBatchLoan(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->hasAnyRole(['admin', 'staff'])) {
+            abort(403, 'Only staff/admin can create loans from requests.');
+        }
+
+        $validated = $request->validate([
+            'request_ids' => ['required', 'array', 'min:1'],
+            'request_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $requestIds = collect($validated['request_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($requestIds === []) {
+            throw ValidationException::withMessages([
+                'request_ids' => 'Please select at least one pending request.',
+            ]);
+        }
+
+        $approvedRequests = collect();
+        $createdBookLoan = null;
+
+        DB::transaction(function () use ($requestIds, $user, &$approvedRequests, &$createdBookLoan): void {
+            $lockedRequests = BookLoanRequest::query()
+                ->whereIn('id', $requestIds)
+                ->lockForUpdate()
+                ->get();
+
+            if ($lockedRequests->count() !== count($requestIds)) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'One or more selected requests no longer exist.',
+                ]);
+            }
+
+            $hasProcessedRequests = $lockedRequests->contains(fn (BookLoanRequest $loanRequest) => $loanRequest->status !== 'pending');
+
+            if ($hasProcessedRequests) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'One or more requests have already been processed.',
+                ]);
+            }
+
+            $requesterIds = $lockedRequests
+                ->pluck('requester_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            if (count($requesterIds) !== 1) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'Batch loan creation requires requests from one user only.',
+                ]);
+            }
+
+            $campusIds = $lockedRequests
+                ->pluck('campus_id')
+                ->filter(fn ($campusId) => $campusId !== null)
+                ->map(fn ($campusId) => (int) $campusId)
+                ->unique()
+                ->values()
+                ->all();
+
+            if (count($campusIds) > 1) {
+                throw ValidationException::withMessages([
+                    'request_ids' => 'Batch loan creation requires requests from the same campus.',
+                ]);
+            }
+
+            $bookIds = $lockedRequests
+                ->pluck('book_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($bookIds === []) {
+                throw ValidationException::withMessages([
+                    'book_ids' => 'No valid books were found for the selected requests.',
+                ]);
+            }
+
+            $lockedBooks = Book::query()
+                ->whereIn('id', $bookIds)
+                ->lockForUpdate()
+                ->get(['id', 'title', 'type', 'is_deleted', 'is_available', 'campus_id']);
+
+            if ($lockedBooks->count() !== count($bookIds)) {
+                throw ValidationException::withMessages([
+                    'book_ids' => 'One or more requested books no longer exist.',
+                ]);
+            }
+
+            $invalidBookTitles = $lockedBooks
+                ->filter(fn (Book $book) => $book->type !== 'physical' || (bool) $book->is_deleted)
+                ->pluck('title')
+                ->values()
+                ->all();
+
+            if ($invalidBookTitles !== []) {
+                throw ValidationException::withMessages([
+                    'book_ids' => 'The following books are not eligible for lending: '.implode(', ', $invalidBookTitles).'.',
+                ]);
+            }
+
+            $processingPivotBookIds = DB::table('book_loan_books as blb')
+                ->join('book_loans as bl', 'bl.id', '=', 'blb.book_loan_id')
+                ->whereIn('blb.book_id', $bookIds)
+                ->where('bl.is_deleted', 0)
+                ->where('bl.status', 'processing')
+                ->pluck('blb.book_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $processingLegacyBookIds = BookLoan::query()
+                ->whereIn('book_id', $bookIds)
+                ->where('is_deleted', false)
+                ->where('status', 'processing')
+                ->pluck('book_id')
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $processingBookIds = collect(array_merge($processingPivotBookIds, $processingLegacyBookIds))
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($processingBookIds !== []) {
+                $processingBookTitles = $lockedBooks
+                    ->whereIn('id', $processingBookIds)
+                    ->pluck('title')
+                    ->values()
+                    ->all();
+
+                throw ValidationException::withMessages([
+                    'book_ids' => 'The following books are already on active loans: '.implode(', ', $processingBookTitles).'.',
+                ]);
+            }
+
+            $unavailableTitles = $lockedBooks
+                ->filter(fn (Book $book) => ! (bool) $book->is_available)
+                ->pluck('title')
+                ->values()
+                ->all();
+
+            if ($unavailableTitles !== []) {
+                throw ValidationException::withMessages([
+                    'book_ids' => 'The following books are no longer available: '.implode(', ', $unavailableTitles).'.',
+                ]);
+            }
+
+            $loanCampusId = $campusIds[0] ?? $lockedBooks->first()?->campus_id;
+
+            $createdBookLoan = BookLoan::create([
+                'book_id' => $bookIds[0],
+                'user_id' => $requesterIds[0],
+                'campus_id' => $loanCampusId,
+                'return_date' => now()->addDays(14)->toDateString(),
+                'status' => 'processing',
+                'is_deleted' => false,
+            ]);
+
+            $createdBookLoan->books()->sync($bookIds);
+            Book::query()->whereIn('id', $bookIds)->update(['is_available' => false]);
+
+            $decidedAt = now();
+            BookLoanRequest::query()
+                ->whereIn('id', $requestIds)
+                ->update([
+                    'status' => 'approved',
+                    'approver_id' => $user->id,
+                    'decided_at' => $decidedAt,
+                ]);
+
+            $approvedRequests = BookLoanRequest::query()
+                ->with(['book:id,title', 'requester:id,name', 'approver:id,name'])
+                ->whereIn('id', $requestIds)
+                ->get();
+        });
+
+        $createdBookLoan?->load(['books:id,title', 'book:id,title', 'user:id,name']);
+
+        $approvedRequests->each(function (BookLoanRequest $approvedRequest): void {
+            broadcast(new BookLoanRequestUpdated($approvedRequest));
+        });
+        broadcast(new DashboardSummaryUpdated('book-loan-request.batch-create-loan'));
+
+        return response()->json([
+            'message' => sprintf('Created one loan with %d requested books.', $approvedRequests->count()),
+            'loanRequests' => $approvedRequests
+                ->map(fn (BookLoanRequest $approvedRequest) => $this->loanRequestPayload($approvedRequest))
+                ->values()
+                ->all(),
             'bookLoan' => $createdBookLoan ? $this->bookLoanPayload($createdBookLoan) : null,
         ]);
     }

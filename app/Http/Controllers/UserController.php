@@ -106,6 +106,7 @@ class UserController extends Controller
     {
         $validated = $request->validated();
         $validated['campus_id'] = auth()->user()->campus_id; // Set campus_id to the creator's campus_id
+        $avatarPath = null;
         // Handle avatar upload
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');

@@ -345,7 +345,7 @@ export default function Index() {
 
             setToast({
                 show: true,
-                message: data.message || (language === 'en' ? 'Loan request submitted.' : 'សំណើរត្រូវបានផ្ញើ'),
+                message: data.message || (language === 'en' ? 'សំណើរបានផ្ញើរដោយជោគជ័យ' : 'សំណើរត្រូវបានផ្ញើ'),
                 type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {

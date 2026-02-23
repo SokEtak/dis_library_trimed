@@ -56,6 +56,8 @@ Route::middleware(['auth', 'role:staff|admin'])
         Route::post('bookloans/import', [BookLoanController::class, 'import'])->name('bookloans.import');
         Route::patch('loan-requests/{loanRequest}/decision', [BookLoanRequestController::class, 'decide'])
             ->name('bookloans.requests.decide');
+        Route::post('loan-requests/batch-create-loan', [BookLoanRequestController::class, 'createBatchLoan'])
+            ->name('bookloans.requests.batch-loan');
 
         Route::resources([
             'books' => BookController::class,

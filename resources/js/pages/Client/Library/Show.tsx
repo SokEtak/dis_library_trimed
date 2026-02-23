@@ -436,7 +436,7 @@ export default function Show({
             setLoanRequestCanceledByRequester(Boolean(data.loanRequest?.canceled_by_requester));
             setToast({
                 show: true,
-                message: data.message || 'Loan request submitted.',
+                message: data.message || 'សំណើរបានផ្ញើរដោយជោគជ័យ',
                 type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {
@@ -561,7 +561,7 @@ export default function Show({
 
             setToast({
                 show: true,
-                message: data.message || (language === 'en' ? 'Loan request submitted.' : 'ážŸáŸ†ážŽáž¾ážšâ€‹â€‹ážáŸ’ážšáž¼ážœâ€‹áž”áž¶áž“â€‹áž•áŸ’áž‰áž¾ážš'),
+                message: data.message || (language === 'en' ? 'សំណើរបានផ្ញើរដោយជោគជ័យ' : 'ážŸáŸ†ážŽáž¾ážšâ€‹â€‹ážáŸ’ážšáž¼ážœâ€‹áž”áž¶áž“â€‹áž•áŸ’áž‰áž¾ážš'),
                 type: data.already_pending ? 'info' : 'success',
             });
         } catch (error) {

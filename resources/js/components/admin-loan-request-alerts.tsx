@@ -1,10 +1,9 @@
-﻿import Toast from '@/components/Toast';
+import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/button';
 import echo from '@/lib/echo';
 import { router, usePage } from '@inertiajs/react';
-import { el } from 'date-fns/locale';
 import { BellRing } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface LoanRequest {
     id: number;
@@ -17,6 +16,13 @@ interface LoanRequest {
     created_at: string | null;
 }
 
+interface LoanRequestGroup {
+    requester_id: number;
+    requester_name: string | null;
+    requests: LoanRequest[];
+    latest_created_at: string | null;
+}
+
 interface SharedData {
     auth: {
         user: {
@@ -25,7 +31,17 @@ interface SharedData {
         } | null;
     };
     adminLoanRequests?: LoanRequest[];
+    [key: string]: unknown;
 }
+
+const parseTimestamp = (dateValue: string | null): number => {
+    if (!dateValue) {
+        return 0;
+    }
+
+    const parsed = new Date(dateValue).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export default function AdminLoanRequestAlerts() {
     const page = usePage<SharedData>();
@@ -34,29 +50,59 @@ export default function AdminLoanRequestAlerts() {
 
     const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(adminLoanRequests || []);
     const [decisionProcessingRequestId, setDecisionProcessingRequestId] = useState<number | null>(null);
+    const [batchProcessingRequesterId, setBatchProcessingRequesterId] = useState<number | null>(null);
     const [highlightedRequestIds, setHighlightedRequestIds] = useState<number[]>([]);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [toast, setToast] = useState<{ show: boolean; message: string; type?: 'success' | 'error' | 'info' }>({
         show: false,
         message: '',
     });
-    const lastLocallyDecidedRequestIdRef = useRef<number | null>(null);
+    const locallyProcessedRequestIdsRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         setPendingLoanRequests(adminLoanRequests || []);
     }, [adminLoanRequests]);
+
+    const groupedPendingLoanRequests = useMemo<LoanRequestGroup[]>(() => {
+        const grouped = new Map<number, LoanRequestGroup>();
+
+        for (const requestItem of pendingLoanRequests) {
+            const requesterId = requestItem.requester_id;
+            const existingGroup = grouped.get(requesterId);
+
+            if (existingGroup) {
+                existingGroup.requests.push(requestItem);
+
+                if (parseTimestamp(requestItem.created_at) > parseTimestamp(existingGroup.latest_created_at)) {
+                    existingGroup.latest_created_at = requestItem.created_at;
+                }
+            } else {
+                grouped.set(requesterId, {
+                    requester_id: requesterId,
+                    requester_name: requestItem.requester_name,
+                    requests: [requestItem],
+                    latest_created_at: requestItem.created_at,
+                });
+            }
+        }
+
+        const groups = Array.from(grouped.values());
+
+        groups.forEach((group) => {
+            group.requests.sort((a, b) => parseTimestamp(b.created_at) - parseTimestamp(a.created_at));
+        });
+
+        groups.sort((a, b) => parseTimestamp(b.latest_created_at) - parseTimestamp(a.latest_created_at));
+
+        return groups;
+    }, [pendingLoanRequests]);
 
     const hasRequestYoungerThanOneMinute = pendingLoanRequests.some((requestItem) => {
         if (!requestItem.created_at) {
             return false;
         }
 
-        const createdAtMs = new Date(requestItem.created_at).getTime();
-
-        if (Number.isNaN(createdAtMs)) {
-            return false;
-        }
-
+        const createdAtMs = parseTimestamp(requestItem.created_at);
         return Math.max(0, nowMs - createdAtMs) < 60_000;
     });
 
@@ -80,9 +126,9 @@ export default function AdminLoanRequestAlerts() {
             return 'មិនមាន';
         }
 
-        const createdAtMs = new Date(createdAt).getTime();
+        const createdAtMs = parseTimestamp(createdAt);
 
-        if (Number.isNaN(createdAtMs)) {
+        if (!createdAtMs) {
             return 'កំហុស';
         }
 
@@ -93,19 +139,19 @@ export default function AdminLoanRequestAlerts() {
         }
 
         if (elapsedSeconds < 60) {
-            return `${elapsedSeconds}  វិនាទីមុន`;
+            return `${elapsedSeconds} វិនាទីមុន`;
         }
 
         const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
         if (elapsedMinutes < 60) {
-            return `${elapsedMinutes}  នាទីមុន`;
+            return `${elapsedMinutes} នាទីមុន`;
         }
 
         const elapsedHours = Math.floor(elapsedMinutes / 60);
 
         if (elapsedHours < 24) {
-            return `${elapsedHours}  ម៉ោងមុន`;
+            return `${elapsedHours} ម៉ោងមុន`;
         }
 
         const elapsedDays = Math.floor(elapsedHours / 24);
@@ -118,7 +164,7 @@ export default function AdminLoanRequestAlerts() {
 
         window.setTimeout(() => {
             setHighlightedRequestIds((currentIds) => currentIds.filter((id) => id !== requestId));
-        }, 2400);
+        }, 2200);
     };
 
     useEffect(() => {
@@ -155,8 +201,12 @@ export default function AdminLoanRequestAlerts() {
                 return;
             }
 
-            if (lastLocallyDecidedRequestIdRef.current === event.loanRequest.id) {
-                lastLocallyDecidedRequestIdRef.current = null;
+            const requestId = event.loanRequest.id;
+            const locallyProcessedRequestIds = locallyProcessedRequestIdsRef.current;
+            const wasLocallyProcessed = locallyProcessedRequestIds.has(requestId);
+
+            if (wasLocallyProcessed) {
+                locallyProcessedRequestIds.delete(requestId);
             } else if (event.loanRequest.status === 'approved') {
                 setToast({
                     show: true,
@@ -173,9 +223,7 @@ export default function AdminLoanRequestAlerts() {
                 });
             }
 
-            setPendingLoanRequests((currentRequests) =>
-                currentRequests.filter((requestItem) => requestItem.id !== event.loanRequest?.id),
-            );
+            setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== requestId));
         };
 
         channel.listen('.book-loan-request.created', handleCreatedEvent);
@@ -188,12 +236,12 @@ export default function AdminLoanRequestAlerts() {
         };
     }, [isAdmin]);
 
-    const handleLoanRequestDecision = async (loanRequest: LoanRequest, decision: 'approved' | 'rejected') => {
-        if (decisionProcessingRequestId !== null) {
+    const handleRejectRequest = async (loanRequest: LoanRequest) => {
+        if (decisionProcessingRequestId !== null || batchProcessingRequesterId !== null) {
             return;
         }
 
-        lastLocallyDecidedRequestIdRef.current = loanRequest.id;
+        locallyProcessedRequestIdsRef.current.add(loanRequest.id);
         setDecisionProcessingRequestId(loanRequest.id);
 
         try {
@@ -208,34 +256,32 @@ export default function AdminLoanRequestAlerts() {
                     'X-CSRF-TOKEN': csrfToken,
                     ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
                 },
-                body: JSON.stringify({ decision }),
+                body: JSON.stringify({ decision: 'rejected' }),
             });
 
             const data = (await response.json()) as { message?: string };
 
             if (!response.ok) {
-                throw new Error(data.message || 'Unable to update the request.');
+                throw new Error(data.message || 'Unable to reject this request.');
             }
 
             setToast({
                 show: true,
-                message: data.message || (decision === 'approved' ? 'Request approved.' : 'Request rejected.'),
-                type: decision === 'approved' ? 'success' : 'error',
+                message: data.message || 'Request rejected.',
+                type: 'error',
             });
 
             setPendingLoanRequests((currentRequests) => currentRequests.filter((requestItem) => requestItem.id !== loanRequest.id));
 
             router.reload({
                 only: ['adminLoanRequests', 'bookloans', 'loanRequests'],
-                preserveScroll: true,
-                preserveState: true,
             });
         } catch (error) {
-            lastLocallyDecidedRequestIdRef.current = null;
+            locallyProcessedRequestIdsRef.current.delete(loanRequest.id);
 
             setToast({
                 show: true,
-                message: error instanceof Error ? error.message : 'Unable to update the request.',
+                message: error instanceof Error ? error.message : 'Unable to reject this request.',
                 type: 'error',
             });
         } finally {
@@ -243,9 +289,69 @@ export default function AdminLoanRequestAlerts() {
         }
     };
 
+    const handleCreateBatchLoan = async (group: LoanRequestGroup) => {
+        if (batchProcessingRequesterId !== null || decisionProcessingRequestId !== null) {
+            return;
+        }
+
+        const requestIds = group.requests.map((requestItem) => requestItem.id);
+        const requestIdSet = new Set(requestIds);
+
+        requestIds.forEach((requestId) => locallyProcessedRequestIdsRef.current.add(requestId));
+        setBatchProcessingRequesterId(group.requester_id);
+
+        try {
+            const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute('content') ?? '';
+
+            const response = await fetch(route('bookloans.requests.batch-loan'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    ...(echo?.socketId() ? { 'X-Socket-Id': echo.socketId() as string } : {}),
+                },
+                body: JSON.stringify({ request_ids: requestIds }),
+            });
+
+            const data = (await response.json()) as { message?: string };
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Unable to create the batch loan.');
+            }
+
+            setToast({
+                show: true,
+                message: data.message || 'Batch loan created.',
+                type: 'success',
+            });
+
+            setPendingLoanRequests((currentRequests) =>
+                currentRequests.filter((requestItem) => !requestIdSet.has(requestItem.id)),
+            );
+
+            router.reload({
+                only: ['adminLoanRequests', 'bookloans', 'loanRequests'],
+            });
+        } catch (error) {
+            requestIds.forEach((requestId) => locallyProcessedRequestIdsRef.current.delete(requestId));
+
+            setToast({
+                show: true,
+                message: error instanceof Error ? error.message : 'Unable to create the batch loan.',
+                type: 'error',
+            });
+        } finally {
+            setBatchProcessingRequesterId(null);
+        }
+    };
+
     if (!isAdmin) {
         return null;
     }
+
+    const isAnyActionProcessing = decisionProcessingRequestId !== null || batchProcessingRequesterId !== null;
 
     return (
         <>
@@ -255,86 +361,96 @@ export default function AdminLoanRequestAlerts() {
                 type={toast.type}
                 onClose={() => setToast((current) => ({ ...current, show: false }))}
             />
-            {pendingLoanRequests.length > 0 && (
-                <div className="pointer-events-none fixed top-4 right-4 z-50 flex w-[min(92vw,24rem)] flex-col gap-3">
-                    {pendingLoanRequests.map((requestItem) => {
-                        const isProcessing = decisionProcessingRequestId === requestItem.id;
-                        const isHighlighted = highlightedRequestIds.includes(requestItem.id);
+            {groupedPendingLoanRequests.length > 0 && (
+                <div className="pointer-events-none fixed top-4 right-4 z-50 flex w-[min(96vw,34rem)] flex-col gap-3">
+                    <div className="pointer-events-auto overflow-hidden rounded-2xl border border-indigo-200 bg-white/95 shadow-2xl backdrop-blur dark:border-indigo-700 dark:bg-gray-900/95">
+                        <div className="flex items-center gap-2 border-b border-indigo-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:border-indigo-800 dark:text-indigo-300">
+                            <BellRing className="h-4 w-4" />
+                            សំណើសុំខ្ចីសៀវភៅ
+                            <span className="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] normal-case text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-200">
+                                {pendingLoanRequests.length} សំណើ
+                            </span>
+                        </div>
+                        <div className="max-h-[calc(100vh-8rem)] space-y-3 overflow-y-auto p-3">
+                            {groupedPendingLoanRequests.map((group) => {
+                                const groupIsHighlighted = group.requests.some((requestItem) =>
+                                    highlightedRequestIds.includes(requestItem.id),
+                                );
+                                const isBatchProcessing = batchProcessingRequesterId === group.requester_id;
 
-                        return (
-                            <div
-                                key={requestItem.id}
-                                className={`pointer-events-auto rounded-xl border bg-white/95 p-4 shadow-lg backdrop-blur transition-transform duration-300 hover:-translate-y-0.5 dark:bg-gray-900/95 ${
-                                    isHighlighted
-                                        ? 'border-amber-300 ring-2 ring-amber-300/70 dark:border-amber-500 dark:ring-amber-500/70'
-                                        : 'border-indigo-200 dark:border-indigo-700'
-                                }`}
-                                style={{
-                                    animation: isHighlighted
-                                        ? 'loan-request-card-in 320ms cubic-bezier(0.22, 1, 0.36, 1), loan-request-card-highlight 1.2s ease-in-out 2'
-                                        : 'loan-request-card-in 320ms cubic-bezier(0.22, 1, 0.36, 1)',
-                                }}
-                            >
-                                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
-                                    <BellRing className={`h-4 w-4 ${isHighlighted ? 'animate-pulse text-amber-500 dark:text-amber-400' : ''}`} />
-                                    សំណើសុំខ្ចីសៀវភៅ
-                                    <span className="ml-auto normal-case font-medium tracking-normal text-[11px] text-gray-500 dark:text-gray-300">
-                                        {formatRelativeAge(requestItem.created_at)}
-                                    </span>
-                                </div>
-                                <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">
-                                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">
-                                        {requestItem.requester_name || 'A user'}
-                                    </span>{' '}
-                                    បានដាក់សំណើដើម្បីខ្ចីសៀវភៅ{' '}
-                                    <span className="font-semibold text-amber-600 dark:text-amber-300">
-                                        {requestItem.book_title || 'this book'}
-                                    </span>
-                                </p>
-                                <div className="mt-3 flex items-center justify-end gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="bg-white text-indigo-600 hover:bg-indigo-50 dark:bg-gray-700 dark:text-indigo-300 dark:hover:bg-indigo-800"
-                                        onClick={() => handleLoanRequestDecision(requestItem, 'rejected')}
-                                        disabled={decisionProcessingRequestId !== null}
+                                return (
+                                    <section
+                                        key={group.requester_id}
+                                        className={`rounded-xl border p-3 transition ${
+                                            groupIsHighlighted
+                                                ? 'border-amber-300 bg-amber-50/70 ring-2 ring-amber-200 dark:border-amber-500 dark:bg-amber-950/30 dark:ring-amber-500/40'
+                                                : 'border-indigo-100 bg-indigo-50/40 dark:border-indigo-800 dark:bg-indigo-950/20'
+                                        }`}
                                     >
-                                        {isProcessing ? 'កំពុងបដិសេធ...' : 'បដិសេធ'}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        className="bg-indigo-500 text-white hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700"
-                                        onClick={() => handleLoanRequestDecision(requestItem, 'approved')}
-                                        disabled={decisionProcessingRequestId !== null}
-                                    >
-                                        {isProcessing ? 'កំពុងដំណើរការ...' : 'អនុម័ត'}
-                                    </Button>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                        <div className="flex items-start gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-semibold text-indigo-700 dark:text-indigo-200">
+                                                    {group.requester_name || 'A user'}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-300">
+                                                    {group.requests.length} សៀវភៅបានស្នើ
+                                                </p>
+                                            </div>
+                                            <span className="shrink-0 text-[11px] text-gray-500 dark:text-gray-300">
+                                                {formatRelativeAge(group.latest_created_at)}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-2 space-y-2">
+                                            {group.requests.map((requestItem) => {
+                                                const isRejectProcessing = decisionProcessingRequestId === requestItem.id;
+
+                                                return (
+                                                    <div
+                                                        key={requestItem.id}
+                                                        className="flex items-center justify-between gap-2 rounded-lg border border-white/80 bg-white/85 px-2.5 py-2 dark:border-gray-700 dark:bg-gray-800/80"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-sm text-gray-800 dark:text-gray-100">
+                                                                {requestItem.book_title || 'Untitled book'}
+                                                            </p>
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-300">
+                                                                {formatRelativeAge(requestItem.created_at)}
+                                                            </p>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="h-8 shrink-0 border-rose-200 bg-white px-2.5 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                                                            onClick={() => handleRejectRequest(requestItem)}
+                                                            disabled={isAnyActionProcessing}
+                                                        >
+                                                            {isRejectProcessing ? 'កំពុងបដិសេធ...' : 'បដិសេធ'}
+                                                        </Button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="mt-3 flex justify-end">
+                                            <Button
+                                                type="button"
+                                                className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700"
+                                                onClick={() => handleCreateBatchLoan(group)}
+                                                disabled={isAnyActionProcessing}
+                                            >
+                                                {isBatchProcessing
+                                                    ? 'កំពុងបង្កើតការខ្ចី...'
+                                                    : `បង្កើតការខ្ចី (${group.requests.length})`}
+                                            </Button>
+                                        </div>
+                                    </section>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             )}
-            <style>{`
-                @keyframes loan-request-card-in {
-                    0% {
-                        opacity: 0;
-                        transform: translate3d(24px, -10px, 0) scale(0.96);
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: translate3d(0, 0, 0) scale(1);
-                    }
-                }
-                @keyframes loan-request-card-highlight {
-                    0%, 100% {
-                        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-                    }
-                    50% {
-                        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.36);
-                    }
-                }
-            `}</style>
         </>
     );
 }
