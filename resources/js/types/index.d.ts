@@ -36,6 +36,8 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
+    show_activity_log_alert_popup?: boolean;
+    show_loan_request_alert_popup?: boolean;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

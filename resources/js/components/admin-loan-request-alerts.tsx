@@ -28,6 +28,7 @@ interface SharedData {
         user: {
             id: number;
             roles?: string[];
+            show_loan_request_alert_popup?: boolean;
         } | null;
     };
     adminLoanRequests?: LoanRequest[];
@@ -46,7 +47,8 @@ const parseTimestamp = (dateValue: string | null): number => {
 export default function AdminLoanRequestAlerts() {
     const page = usePage<SharedData>();
     const { auth, adminLoanRequests = [] } = page.props;
-    const isAdmin = auth.user?.roles?.includes('admin') ?? false;
+    const hasLoanPopupEnabled = auth.user?.show_loan_request_alert_popup ?? true;
+    const isAdmin = (auth.user?.roles?.includes('admin') ?? false) && hasLoanPopupEnabled;
 
     const [pendingLoanRequests, setPendingLoanRequests] = useState<LoanRequest[]>(adminLoanRequests || []);
     const [decisionProcessingRequestId, setDecisionProcessingRequestId] = useState<number | null>(null);
@@ -63,8 +65,16 @@ export default function AdminLoanRequestAlerts() {
     const locallyProcessedRequestIdsRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
+        if (!isAdmin) {
+            setPendingLoanRequests([]);
+            setHighlightedRequestIds([]);
+            setDecisionProcessingRequestId(null);
+            setBatchProcessingState(null);
+            return;
+        }
+
         setPendingLoanRequests(adminLoanRequests || []);
-    }, [adminLoanRequests]);
+    }, [adminLoanRequests, isAdmin]);
 
     const groupedPendingLoanRequests = useMemo<LoanRequestGroup[]>(() => {
         const grouped = new Map<number, LoanRequestGroup>();

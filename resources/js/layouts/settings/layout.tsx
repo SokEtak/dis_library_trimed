@@ -13,8 +13,8 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
-        title: 'ពាក្យសម្ងាត់',
-        href: '/settings/password',
+        title: 'ការជូនដំណឹង',
+        href: '/settings/notifications',
         icon: null,
     },
     {
@@ -25,7 +25,6 @@ const sidebarNavItems: NavItem[] = [
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
         return null;
     }
@@ -34,11 +33,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     return (
         <div className="px-4 py-6">
-            <Heading title="ការកំណត់" description="គ្រប់គ្រងប្រវត្តិរូប និង ការកំណត់គណនីរបស់អ្នក" />
+            <Heading title="ការកំណត់" description="គ្រប់គ្រងប្រវត្តិរូប ការជូនដំណឹង និងរូបរាងកម្មវិធីរបស់អ្នក" />
 
-            <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
+            <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
                 <aside className="w-full max-w-xl lg:w-48">
-                    <nav className="flex flex-col space-y-1 space-x-0">
+                    <nav className="flex flex-col space-x-0 space-y-1">
                         {sidebarNavItems.map((item, index) => (
                             <Button
                                 key={`${item.href}-${index}`}
@@ -66,3 +65,4 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         </div>
     );
 }
+

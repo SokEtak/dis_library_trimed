@@ -20,6 +20,7 @@ interface SharedData {
         user: {
             id: number;
             roles?: string[];
+            show_activity_log_alert_popup?: boolean;
         } | null;
     };
     [key: string]: unknown;
@@ -92,7 +93,8 @@ const formatRelativeAge = (createdAt: string | null, nowMs: number): string => {
 export default function ActivityLogAlerts() {
     const page = usePage<SharedData>();
     const { auth } = page.props;
-    const canWatchLogs = auth.user?.roles?.some((role) => role === 'admin' || role === 'staff') ?? false;
+    const hasLogPopupEnabled = auth.user?.show_activity_log_alert_popup ?? true;
+    const canWatchLogs = (auth.user?.roles?.some((role) => role === 'admin' || role === 'staff') ?? false) && hasLogPopupEnabled;
 
     const [alerts, setAlerts] = useState<LiveActivityLog[]>([]);
     const [highlightedAlertIds, setHighlightedAlertIds] = useState<number[]>([]);
@@ -154,6 +156,17 @@ export default function ActivityLogAlerts() {
             timers.clear();
         };
     }, []);
+
+    useEffect(() => {
+        if (canWatchLogs) {
+            return;
+        }
+
+        autoDismissTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+        autoDismissTimersRef.current.clear();
+        setAlerts([]);
+        setHighlightedAlertIds([]);
+    }, [canWatchLogs]);
 
     useEffect(() => {
         if (!canWatchLogs) {

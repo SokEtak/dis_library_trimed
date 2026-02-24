@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\NotificationPreferenceController;
 use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -13,11 +14,16 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('settings/password', [PasswordController::class, 'edit'])->name('password.edit');
+    Route::get('settings/password', function () {
+        return redirect('/settings/profile');
+    })->name('password.edit');
 
     Route::put('settings/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('password.update');
+
+    Route::get('settings/notifications', [NotificationPreferenceController::class, 'edit'])->name('notifications.edit');
+    Route::patch('settings/notifications', [NotificationPreferenceController::class, 'update'])->name('notifications.update');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');

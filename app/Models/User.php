@@ -52,6 +52,8 @@ class User extends Authenticatable
         'google_id',
         'isVerified',
         'isActive',
+        'show_activity_log_alert_popup',
+        'show_loan_request_alert_popup',
     ];
 
     /**
@@ -74,6 +76,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'show_activity_log_alert_popup' => 'boolean',
+            'show_loan_request_alert_popup' => 'boolean',
         ];
     }
 

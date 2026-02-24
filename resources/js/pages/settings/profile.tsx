@@ -1,15 +1,16 @@
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
 import { Head, usePage, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { FormEventHandler, useRef, useState } from 'react';
 
-import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
+import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -18,14 +19,38 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Profile({ status }: { status?: string }) {
+export default function Profile() {
     const { auth } = usePage<SharedData>().props;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const { data, setData, patch, processing, errors, recentlySuccessful } = useForm({
+    const passwordInput = useRef<HTMLInputElement>(null);
+    const currentPasswordInput = useRef<HTMLInputElement>(null);
+
+    const {
+        data,
+        setData,
+        patch,
+        processing: profileProcessing,
+        errors,
+        recentlySuccessful: profileRecentlySuccessful,
+    } = useForm({
         name: auth.user.name,
         email: auth.user.email,
         password: '',
+    });
+
+    const {
+        data: passwordData,
+        setData: setPasswordData,
+        errors: passwordErrors,
+        put: putPassword,
+        reset: resetPassword,
+        processing: passwordProcessing,
+        recentlySuccessful: passwordRecentlySuccessful,
+    } = useForm({
+        current_password: '',
+        password: '',
+        password_confirmation: '',
     });
 
     const handleSubmitName = (e: React.FormEvent) => {
@@ -38,22 +63,26 @@ export default function Profile({ status }: { status?: string }) {
         });
     };
 
+    const updatePassword: FormEventHandler = (e) => {
+        e.preventDefault();
 
+        putPassword(route('password.update'), {
+            preserveScroll: true,
+            onSuccess: () => resetPassword(),
+            onError: (formErrors) => {
+                if (formErrors.password) {
+                    resetPassword('password', 'password_confirmation');
+                    passwordInput.current?.focus();
+                }
 
-    // Map Spatie roles to display names
-    const roleDisplayMap: { [key: string]: string } = {
-        'regular-user': 'User',
-        'staff': 'Librarian',
-        'admin': 'Super Librarian',
-        'super-admin': 'Admin',
+                if (formErrors.current_password) {
+                    resetPassword('current_password');
+                    currentPasswordInput.current?.focus();
+                }
+            },
+        });
     };
 
-    // Determine the display pms (show the first matching pms or 'Unknown')
-    const displayRole = auth.user && auth.user.roles.length > 0
-        ? roleDisplayMap[auth.user.roles[0]] || 'Unknown'
-        : 'Unknown';
-
-    console.log('User Roles:', auth.user);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="ការកំណត់ប្រវត្តិរូប" />
@@ -91,7 +120,7 @@ export default function Profile({ status }: { status?: string }) {
                                                 value={data.name}
                                                 onChange={(e) => setData('name', e.target.value)}
                                                 className="mt-2 text-lg"
-                                                disabled={processing}
+                                                disabled={profileProcessing}
                                             />
                                             {errors.name && (
                                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
@@ -105,7 +134,7 @@ export default function Profile({ status }: { status?: string }) {
                                                 value={data.email}
                                                 onChange={(e) => setData('email', e.target.value)}
                                                 className="mt-2 text-lg"
-                                                disabled={processing}
+                                                disabled={profileProcessing}
                                             />
                                             {errors.email && (
                                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
@@ -120,7 +149,7 @@ export default function Profile({ status }: { status?: string }) {
                                                 onChange={(e) => setData('password', e.target.value)}
                                                 placeholder="បញ្ចូលពាក្យសម្ងាត់របស់អ្នកដើម្បីបញ្ជាក់"
                                                 className="mt-2 text-lg"
-                                                disabled={processing}
+                                                disabled={profileProcessing}
                                             />
                                             {errors.password && (
                                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
@@ -129,10 +158,10 @@ export default function Profile({ status }: { status?: string }) {
                                         <div className="flex gap-2">
                                             <button
                                                 type="submit"
-                                                disabled={processing}
+                                                disabled={profileProcessing}
                                                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg font-semibold transition-colors"
                                             >
-                                                {processing ? 'រក្សាទុក...' : 'រក្សាទុក'}
+                                                {profileProcessing ? 'រក្សាទុក...' : 'រក្សាទុក'}
                                             </button>
                                             <button
                                                 type="button"
@@ -144,7 +173,7 @@ export default function Profile({ status }: { status?: string }) {
                                                         password: '',
                                                     });
                                                 }}
-                                                disabled={processing}
+                                                disabled={profileProcessing}
                                                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-800 dark:text-white rounded-lg font-semibold transition-colors"
                                             >
                                                 បោះបង់
@@ -168,7 +197,7 @@ export default function Profile({ status }: { status?: string }) {
                                         </div>
                                         <p className="text-md text-gray-600 dark:text-gray-300 mt-1 drop-shadow-sm">{auth.user.email}</p>
                                         <Transition
-                                            show={recentlySuccessful}
+                                            show={profileRecentlySuccessful}
                                             enter="transition ease-in-out"
                                             enterFrom="opacity-0"
                                             leave="transition ease-in-out"
@@ -203,7 +232,7 @@ export default function Profile({ status }: { status?: string }) {
 
                         <div className="mt-8 flex items-center gap-4">
                             <Transition
-                                show={recentlySuccessful}
+                                show={profileRecentlySuccessful}
                                 enter="transition ease-in-out"
                                 enterFrom="opacity-0"
                                 leave="transition ease-in-out"
@@ -213,6 +242,72 @@ export default function Profile({ status }: { status?: string }) {
                             </Transition>
                         </div> */}
                     </div>
+                </div>
+
+                <div className="space-y-6 rounded-2xl border border-border bg-card/70 p-6 shadow-sm">
+                    <HeadingSmall title="ផ្លាស់ប្តូរពាក្យសម្ងាត់" description="" />
+
+                    <form onSubmit={updatePassword} className="space-y-6">
+                        <div className="grid gap-2">
+                            <Label htmlFor="current_password">ពាក្យសម្ងាត់ចាស់</Label>
+                            <Input
+                                id="current_password"
+                                ref={currentPasswordInput}
+                                value={passwordData.current_password}
+                                onChange={(e) => setPasswordData('current_password', e.target.value)}
+                                type="password"
+                                autoComplete="current-password"
+                                placeholder="បញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន"
+                                disabled={passwordProcessing}
+                            />
+                            <InputError message={passwordErrors.current_password} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="new_password">ពាក្យសម្ងាត់ថ្មី</Label>
+                            <Input
+                                id="new_password"
+                                ref={passwordInput}
+                                value={passwordData.password}
+                                onChange={(e) => setPasswordData('password', e.target.value)}
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="បញ្ចូលពាក្យសម្ងាត់ថ្មី"
+                                disabled={passwordProcessing}
+                            />
+                            <InputError message={passwordErrors.password} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="new_password_confirmation">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី</Label>
+                            <Input
+                                id="new_password_confirmation"
+                                value={passwordData.password_confirmation}
+                                onChange={(e) => setPasswordData('password_confirmation', e.target.value)}
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="បញ្ជាក់ពាក្យសម្ងាត់ថ្មី"
+                                disabled={passwordProcessing}
+                            />
+                            <InputError message={passwordErrors.password_confirmation} />
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <Button type="submit" disabled={passwordProcessing}>
+                                រក្សាទុកពាក្យសម្ងាត់
+                            </Button>
+
+                            <Transition
+                                show={passwordRecentlySuccessful}
+                                enter="transition ease-in-out"
+                                enterFrom="opacity-0"
+                                leave="transition ease-in-out"
+                                leaveTo="opacity-0"
+                            >
+                                <p className="text-sm text-neutral-600">បានរក្សាទុក</p>
+                            </Transition>
+                        </div>
+                    </form>
                 </div>
 
                 {isModalOpen && (
@@ -260,3 +355,4 @@ export default function Profile({ status }: { status?: string }) {
         </AppLayout>
     );
 }
+

@@ -50,6 +50,8 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
                     'avatar' => $request->user()->avatar,
+                    'show_activity_log_alert_popup' => $request->user()->show_activity_log_alert_popup ?? true,
+                    'show_loan_request_alert_popup' => $request->user()->show_loan_request_alert_popup ?? true,
                     'roles' => $request->user()->getRoleNames()->toArray(), // Spatie roles
                     'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(), // Spatie permissions
                 ] : null,
