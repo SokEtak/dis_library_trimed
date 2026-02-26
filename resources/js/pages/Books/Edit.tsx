@@ -414,7 +414,7 @@ export default function BooksEdit({
         subject_id: book.subject_id ? String(book.subject_id) : '',
         downloadable: Boolean(book.downloadable),
         type,
-        is_continue: true,
+        is_continue: false,
         _method: 'put',
     });
 
@@ -1528,18 +1528,48 @@ export default function BooksEdit({
 
                             {/* Action Buttons and Checkbox */}
                             <div className="col-span-full mt-6 flex items-center justify-between space-x-4">
-                                <div className="flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        id="is_continue"
-                                        checked={data.is_continue}
-                                        onChange={(e) => setData('is_continue', e.target.checked)}
-                                        className="h-4 w-4 border-gray-300 bg-gray-100 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-indigo-400"
-                                        aria-label={t.isContinue}
-                                    />
-                                    <Label htmlFor="is_continue" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
-                                        {t.isContinue}
-                                    </Label>
+                                <div className="flex items-center space-x-6">
+                                    {/* <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_continue"
+                                            checked={data.is_continue}
+                                            onChange={(e) => setData('is_continue', e.target.checked)}
+                                            className="h-4 w-4 border-gray-300 bg-gray-100 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-indigo-400"
+                                            aria-label={t.isContinue}
+                                        />
+                                        <Label htmlFor="is_continue" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                            {t.isContinue}
+                                        </Label>
+                                    </div> */}
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_available"
+                                            checked={data.is_available}
+                                            onChange={(e) => setData('is_available', e.target.checked)}
+                                            className="h-4 w-4 border-gray-300 bg-gray-100 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-indigo-400"
+                                            aria-label="គឺមាន"
+                                        />
+                                        <Label htmlFor="is_available" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                            ភាពអាចរកបាន
+                                        </Label>
+                                    {isEbook && (
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="downloadable"
+                                                checked={data.downloadable}
+                                                onChange={(e) => setData('downloadable', e.target.checked)}
+                                                className="h-4 w-4 border-gray-300 bg-gray-100 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-indigo-400"
+                                                aria-label="DownloadAble"
+                                            />
+                                            <Label htmlFor="downloadable" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                {t.downloadable}
+                                            </Label>
+                                        </div>
+                                    )}
+                                    </div>
                                 </div>
                                 <div className="flex justify-end space-x-4">
                                     <Button

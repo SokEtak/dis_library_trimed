@@ -219,7 +219,7 @@ export const translations = {
         preview: 'មើលជាមុន',
         createButton: 'បង្កើតសៀវភៅ',
         creating: 'កំពុងបង្កើត...',
-        cancel: 'បោះបង់ ត្រឡប់ទៅបញ្ជីសៀវភៅ',
+        cancel: 'បោះបង់',
         coverPreview: 'មើលគម្របជាមុន',
         pdfPreview: 'មើល PDF ជាមុន',
         noCoverAvailable: 'គ្មានរូបភាពគម្របទេ',

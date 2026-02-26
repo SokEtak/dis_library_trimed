@@ -2193,7 +2193,7 @@ function BookIndex() {
                                     )}
                                     <Link href={route('books.edit', rowModal.id)}>
                                             <Button variant="outline" size="sm" className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border-blue-300 bg-white text-blue-700 hover:bg-blue-100 dark:border-blue-500 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-blue-700">
-                                                <Pencil className="h-4 w-4" />
+                                                <Pencil className="h-4 w-4" />កែប្រែ
                                             </Button>
                                         </Link>
                                     {rowModal.pdf_url && (
